@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.0.1";
+const THEF_VERSION = "1.0.2";
 
 const T = {
   en: { home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -725,7 +725,8 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       .tile .th ha-icon { --mdc-icon-size: clamp(12px, 3.4cqw, 16px); color: var(--c); flex:0 0 auto; }
       .tile .tv { font-size: clamp(14px, 4.6cqw, 24px); font-weight:600; font-variant-numeric: tabular-nums; white-space:nowrap; line-height:1.2; overflow:hidden; text-overflow:ellipsis; }
       .tile .tv.txt { font-size: clamp(12px, 3.6cqw, 18px); white-space:normal; line-height:1.15; }
-      .tile.inv .tv.txt { font-size: clamp(11px, 3.1cqw, 15px); font-weight:600; margin:auto 0; padding-bottom:4px; }
+      .tile.inv .tv.txt { font-size: clamp(11px, 3.1cqw, 15px); font-weight:600; margin:auto 0; padding-bottom:4px; align-self:stretch; text-align:center; text-wrap:balance; }
+      .tile.inv .th { justify-content:center; }
       .tile .tp { display:grid; grid-template-columns:auto 1fr; column-gap:6px; font-size: clamp(9.5px, 2.6cqw, 12px); opacity:.7; font-variant-numeric: tabular-nums; margin-top:auto; line-height:1.25; }
       .tile .tp b { font-weight:400; text-align:right; white-space:nowrap; }
       .tile.sm { padding:3px 8px; justify-content:center; gap:0; } .tile.sm .tv { font-size: clamp(13px, 4cqw, 20px); line-height:1.1; } .tile.sm .th { font-size: clamp(9.5px, 2.6cqw, 12px); }
