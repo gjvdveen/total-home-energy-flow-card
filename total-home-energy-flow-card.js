@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.0.0";
+const THEF_VERSION = "1.0.1";
 
 const T = {
   en: { home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -725,6 +725,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       .tile .th ha-icon { --mdc-icon-size: clamp(12px, 3.4cqw, 16px); color: var(--c); flex:0 0 auto; }
       .tile .tv { font-size: clamp(14px, 4.6cqw, 24px); font-weight:600; font-variant-numeric: tabular-nums; white-space:nowrap; line-height:1.2; overflow:hidden; text-overflow:ellipsis; }
       .tile .tv.txt { font-size: clamp(12px, 3.6cqw, 18px); white-space:normal; line-height:1.15; }
+      .tile.inv .tv.txt { font-size: clamp(11px, 3.1cqw, 15px); font-weight:600; margin:auto 0; padding-bottom:4px; }
       .tile .tp { display:grid; grid-template-columns:auto 1fr; column-gap:6px; font-size: clamp(9.5px, 2.6cqw, 12px); opacity:.7; font-variant-numeric: tabular-nums; margin-top:auto; line-height:1.25; }
       .tile .tp b { font-weight:400; text-align:right; white-space:nowrap; }
       .tile.sm { padding:3px 8px; justify-content:center; gap:0; } .tile.sm .tv { font-size: clamp(13px, 4cqw, 20px); line-height:1.1; } .tile.sm .th { font-size: clamp(9.5px, 2.6cqw, 12px); }
@@ -1097,7 +1098,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     }
     // inverter
     const ist = inv.entity && hs[inv.entity], ival = ist ? (this._hass.formatEntityState ? this._hass.formatEntityState(ist) : ist.state) : null;
-    this._tile("inv", { ...inT, color: inv.color || "#8e8e93", on: true, icon: inv.icon || "mdi:sine-wave", name: inv.name || "Omvormer", value: ival, txt: true, cfg: inv.entity ? { entity: inv.entity, navigate: inv.navigate } : null });
+    this._tile("inv", { ...inT, color: inv.color || "#8e8e93", on: true, icon: inv.icon || "mdi:sine-wave", name: inv.name || "Omvormer", value: ival, txt: true, cls: "inv", cfg: inv.entity ? { entity: inv.entity, navigate: inv.navigate } : null });
     // battery
     if (b) {
       const alarm = b.soc_alarm != null ? Number(b.soc_alarm) : 15, bc = b.color || (soc != null && soc < alarm ? "#ff6b5e" : "#34c759");
