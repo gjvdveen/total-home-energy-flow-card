@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.8.2";
+const THEF_VERSION = "1.8.3";
 
 const T = {
   en: { produced: "produced", used: "used", imported: "imported", exp_short: "export", today_total: "Total today", home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -1005,7 +1005,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const base = baseTot !== undefined ? null : gs.r.find((x) => !x.g._rest && (rest.g.of ? x.g.name === rest.g.of : true));
     const tot = baseTot !== undefined ? baseTot : base ? base.tot : null;
     const loads = [...gs.r.filter((x) => x !== base && x !== rest), ...gs.l.filter((x) => x.g.load || x.g.ac === "in")]
-      .filter((x) => x.g.type !== "meter" && x.g.in_rest !== false && (x.g.ac !== "in" || x.g.in_rest === true));
+      .filter((x) => x.g.type !== "meter" && !x.g.source && x.g.position !== "top" && x.g.in_rest !== false && (x.g.ac !== "in" || x.g.in_rest === true));   // sources (solar on AC-out) are not consumers
     rest.tot = tot != null ? Math.max(0, tot - loads.reduce((a, x) => a + Math.max(0, x.tot || 0), 0)) : null;
   }
   _renderToday(groups, soc) {   // same schematic, but kWh since midnight (from the long-term statistics)
@@ -1028,7 +1028,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const ch = st(b.energy_charge), di = st(b.energy_discharge);
     this._bE = ch != null || di != null ? { c: ch || 0, d: di || 0 } : null;
     // home without its own kWh meter: energy balance = grid import − export + other sources + battery discharge − charge
-    const grid = tgs.l.find((x) => x.imp != null), srcs = tgs.l.filter((x) => x !== grid && !x.g.load && x.g.ac !== "in" && x.g.type !== "meter");
+    const grid = tgs.l.find((x) => x.imp != null), srcs = [...tgs.l, ...tgs.r].filter((x) => x !== grid && x.src && x.g.type !== "meter");
     const bal = grid ? grid.imp - grid.exp + srcs.reduce((a, x) => a + (x.tot || 0), 0) + (this._bE ? this._bE.d - this._bE.c : 0) : null;
     const home = rest && rest.g.entity ? null : tgs.r.find((x) => !x.g._rest);
     if (home && home.tot == null && !home.g.energy) home.tot = bal;
@@ -1326,7 +1326,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       lbl += t(inT.x - 3, inT.y + inT.h / 2 - 5, L.ac_in || "AC-in", "end");
       if (yo1.length) lbl += t(W / 2 + 4, inT.y + inT.h + 10, L.ac_out1 || "AC-out 1", "start");
       if (yo2.length) lbl += t(W / 2 + 14, inT.y + inT.h + 34, L.ac_out2 || "AC-out 2", "start"); }
-    this._el.ovsvg.innerHTML = lbl + bus.map((d) => `<path d="${d}" stroke="rgba(127,127,127,.45)"/>`).join("") + paths.slice().sort((a, b) => (a.pw || 1e9) - (b.pw || 1e9)).map((p) => `<path d="${p.d}" stroke="rgba(127,127,127,.35)"/>` + (p.on ? `<path class="flow${p.rev ? " rev" : ""}" d="${p.d}" style="stroke:${p.color}"/>` : "")).join("");
+    this._el.ovsvg.innerHTML = lbl + bus.map((d) => `<path d="${d}" stroke="rgba(127,127,127,.45)"/>`).join("") + paths.slice().sort((a, b) => (a.pw || 1e9) - (b.pw || 1e9)).map((p) => `<path d="${p.d}" stroke="rgba(127,127,127,.35)"/>` + (p.on && !this._eMode ? `<path class="flow${p.rev ? " rev" : ""}" d="${p.d}" style="stroke:${p.color}"/>` : "")).join("");
   }
 }
 for (const m of ["_t", "_history", "_renderChart", "_stat"]) TotalHomeEnergyRingCard.prototype[m] = TotalHomeEnergyFlowCard.prototype[m];
