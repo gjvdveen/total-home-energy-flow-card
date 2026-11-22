@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.6.1";
+const THEF_VERSION = "1.6.2";
 
 const T = {
   en: { home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -1104,7 +1104,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     // middle column; compact when the sides are short (few devices), so the card shrinks with them
     const needSides = Math.max(need(sides.l), need(sides.r)), cmp = needSides < 300;
     const invPh = (inv.phases || []).map((id) => this._num(id)), hTop = topL.length ? (cmp ? 50 : 58) : 0, hInv = (cmp ? 60 : 74) + (invPh.length && !this._eMode ? 40 : 0), hBat = b ? (cmp ? 88 : 112) : 0, LG2 = cmp ? 18 : LG;
-    const needMid = hPr + PG + hTop + hInv + hBat + (hTop ? LG2 : 0) + (hBat ? LG2 : 0) + (vic ? 22 + (sides.r.concat(sides.l).some((x) => isOut(x, "out2")) ? 14 : 0) : 0);
+    const needMid = hPr + PG + hTop + hInv + hBat + (hTop ? LG2 : 0) + (hBat ? LG2 : 0) + (vic ? 40 + (sides.r.concat(sides.l).some((x) => isOut(x, "out2")) ? 16 : 0) : 0);
     const topH = Math.round(Math.max(cmp ? 200 : 240, needSides, needMid));
     const rows = Math.ceil(devs.length / 3), RH = UMIN, gridTop = topH + 30;
     const H = devs.length ? gridTop + rows * RH + (rows - 1) * 16 : topH;
@@ -1154,7 +1154,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
           ys.push(ty); busX = bxx; return;
         }
         if (vic && (isOut(x, "out1") || isOut(x, "out2"))) {
-          const two = isOut(x, "out2"), hy = inT.y + inT.h + (two ? 26 : 14), icx = W / 2 + (two ? 10 : 0);
+          const two = isOut(x, "out2"), hy = inT.y + inT.h + (two ? 46 : 32), icx = W / 2 + (two ? 10 : 0);
           const vx = side === "l" ? CW + (two ? 5 : 11) : W - CW - (two ? 5 : 11), r6 = 5;
           const sgnY = hy > ty ? 1 : -1, sgnX = side === "l" ? 1 : -1;
           const d = `M${ex},${ty}H${vx - sgnX * r6}Q${vx},${ty} ${vx},${ty + sgnY * r6}V${hy - sgnY * r6}Q${vx},${hy} ${vx + sgnX * r6},${hy}H${icx}V${inT.y + inT.h}`;
@@ -1255,7 +1255,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     if (vic) { const L = c.labels || {};
       port("in", L.ac_in || "AC-in", inT.x, inT.y + inT.h / 2);
       if (yo1.length) port("o1", L.ac_out1 || "AC-out 1", W / 2, inT.y + inT.h);
-      if (yo2.length) port("o2", L.ac_out2 || "AC-out 2", W / 2 + 10, inT.y + inT.h + 26); }
+      if (yo2.length) port("o2", L.ac_out2 || "AC-out 2", W / 2 + 10, inT.y + inT.h + 46); }
     this._el.ov.querySelectorAll(".port").forEach((e) => { if (!e._seen) e.remove(); });
     let lbl = "";
     if (false) { const t = (x, y, txt, anc) => `<text x="${x}" y="${y}" font-size="7.5" fill="currentColor" opacity=".55" text-anchor="${anc}" font-weight="600">${txt}</text>`;
