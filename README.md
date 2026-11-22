@@ -188,6 +188,7 @@ chart:
 | `max` | Full scale in W for this item (split over the phases) |
 | `position: top` | Place the item above the inverter in the schematic (e.g. solar) |
 | `load: true` | A consumer placed on the left side (flow direction is reversed) |
+| `ac: in` | Device sits before the inverter (grid side): it hangs on the grid line and is left out of *Other* |
 | `size` | `small` or `large` tile in the schematic |
 | `in_rest: false` | Don't subtract this item when calculating *Other* (e.g. an EV charger that isn't part of the home total) |
 | `navigate` | Path to open on tap (otherwise the more-info dialog opens) |
@@ -197,7 +198,7 @@ chart:
 
 ### Inverter (`inverter`)
 
-`name`, `entity` (a state sensor, e.g. *Inverting* / *Charging*), `icon`, `color`, `navigate`.
+`name`, `entity` (a state sensor, e.g. *Inverting* / *Charging*), `icon`, `color`, `navigate`, `phases` (list of per-phase power sensors, shown as bars), `max`.
 
 ### Price (`price`)
 

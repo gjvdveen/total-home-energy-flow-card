@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.3.2";
+const THEF_VERSION = "1.4.0";
 
 const T = {
   en: { home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -734,7 +734,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       .tile .tv { font-size: clamp(14px, 4.6cqw, 24px); font-weight:600; font-variant-numeric: tabular-nums; white-space:nowrap; line-height:1.2; overflow:hidden; text-overflow:ellipsis; }
       .tile .tv.txt { font-size: clamp(12px, 3.6cqw, 18px); white-space:normal; line-height:1.15; }
       .tile.inv .tv.txt { font-size: clamp(11px, 3.1cqw, 15px); font-weight:600; margin:auto 0; padding-bottom:4px; align-self:stretch; text-align:center; text-wrap:balance; }
-      .tile.inv .th { justify-content:center; }
+      .tile.inv .th { justify-content:center; } .tile.inv.ph .tv.txt { margin:4px 0 0; } .tile.inv .pb { text-align:left; }
       .tile .tp { display:grid; grid-template-columns:auto 1fr; column-gap:6px; font-size: clamp(9.5px, 2.6cqw, 12px); opacity:.7; font-variant-numeric: tabular-nums; margin-top:auto; line-height:1.25; }
       .tile .tp b { font-weight:400; text-align:right; white-space:nowrap; }
       .tile.sm { padding:3px 8px; justify-content:center; gap:0; } .tile.sm .tv { font-size: clamp(13px, 4cqw, 20px); line-height:1.1; } .tile.sm .th { font-size: clamp(9.5px, 2.6cqw, 12px); }
@@ -833,7 +833,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const rest = groups.r.find((x) => x.g._rest);
     if (rest) {   // base = the group named in rest.of, else the first right-hand group (home)
       const base = groups.r.find((x) => !x.g._rest && (rest.g.of ? x.g.name === rest.g.of : true));
-      const loads = [...groups.r.filter((x) => x !== base && x !== rest), ...groups.l.filter((x) => x.g.load)].filter((x) => x.g.type !== "meter" && x.g.in_rest !== false);
+      const loads = [...groups.r.filter((x) => x !== base && x !== rest), ...groups.l.filter((x) => x.g.load)].filter((x) => x.g.type !== "meter" && x.g.in_rest !== false && (x.g.ac !== "in" || x.g.in_rest === true));
       rest.tot = base && base.tot != null ? Math.max(0, base.tot - loads.reduce((a, x) => a + Math.max(0, x.tot || 0), 0)) : null;
     }
     let soc = null, bp = null;
@@ -972,7 +972,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const rest = tgs.r.find((x) => x.g._rest);
     if (rest) {
       const base = tgs.r.find((x) => !x.g._rest && (rest.g.of ? x.g.name === rest.g.of : true));
-      const loads = [...tgs.r.filter((x) => x !== base && x !== rest), ...tgs.l.filter((x) => x.g.load)].filter((x) => x.g.type !== "meter" && x.g.in_rest !== false);
+      const loads = [...tgs.r.filter((x) => x !== base && x !== rest), ...tgs.l.filter((x) => x.g.load)].filter((x) => x.g.type !== "meter" && x.g.in_rest !== false && (x.g.ac !== "in" || x.g.in_rest === true));
       rest.tot = base && base.tot != null ? Math.max(0, base.tot - loads.reduce((a, x) => a + Math.max(0, x.tot || 0), 0)) : null;
     }
     const ch = st(b.energy_charge), di = st(b.energy_discharge);
@@ -985,7 +985,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     }
     if (rest) {
       const base = tgs.r.find((x) => !x.g._rest && (rest.g.of ? x.g.name === rest.g.of : true));
-      const loads = [...tgs.r.filter((x) => x !== base && x !== rest), ...tgs.l.filter((x) => x.g.load)].filter((x) => x.g.type !== "meter" && x.g.in_rest !== false);
+      const loads = [...tgs.r.filter((x) => x !== base && x !== rest), ...tgs.l.filter((x) => x.g.load)].filter((x) => x.g.type !== "meter" && x.g.in_rest !== false && (x.g.ac !== "in" || x.g.in_rest === true));
       rest.tot = base && base.tot != null ? Math.max(0, base.tot - loads.reduce((a, x) => a + Math.max(0, x.tot || 0), 0)) : null;
     }
     this._el.ov.classList.add("static");
@@ -1079,16 +1079,20 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const topL = groups.l.filter((x) => x.g.position === "top").slice(0, 1);
     const sides = { l: groups.l.filter((x) => x.g.position !== "top").slice(0, 5), r: groups.r.filter((x) => x.g.position !== "top").slice(0, 5) };
     // home branch: home stays top right, all other consumers go to a grid underneath, fed from home
-    const allR = groups.r.filter((x) => x.g.position !== "top"), br = c.branch !== false && allR.length > 1;
+    // devices with ac: in sit before the inverter (on the grid side): they hang on the grid line, left under the grid tile
+    const isIn = (x) => x.g.ac === "in";
+    const acIn = [...groups.r.filter(isIn), ...groups.l.filter((x) => isIn(x) && x.g.position !== "top")];
+    sides.l = groups.l.filter((x) => x.g.position !== "top" && !isIn(x)).concat(groups.r.filter(isIn)).slice(0, 5);
+    const allR = groups.r.filter((x) => x.g.position !== "top" && !isIn(x)), br = c.branch !== false && allR.length > 1;
     const devs = br ? allR.slice(1, 10) : [];
-    if (br) sides.r = allR.slice(0, 1);
+    if (br) sides.r = allR.slice(0, 1); else sides.r = allR.slice(0, 5);
     const wt = (x) => x.w ? x.w : x.g.size === "small" ? 1 : x.g.size === "large" ? 2 : x.ph.length ? 1.7 : 1;
     const units = (L) => L.reduce((a, x) => a + wt(x), 0);
     const need = (L) => L.length ? units(L) * UMIN + G * (L.length - 1) : 0;
     const pc = c.price && c.price.entity && this._hass.states[c.price.entity], hPr = pc && c.price.show !== false && !this._eMode ? 30 : 0, PG = hPr ? 10 : 0;
     // middle column; compact when the sides are short (few devices), so the card shrinks with them
     const needSides = Math.max(need(sides.l), need(sides.r)), cmp = needSides < 300;
-    const hTop = topL.length ? (cmp ? 50 : 58) : 0, hInv = cmp ? 60 : 74, hBat = b ? (cmp ? 88 : 112) : 0, LG2 = cmp ? 18 : LG;
+    const invPh = (inv.phases || []).map((id) => this._num(id)), hTop = topL.length ? (cmp ? 50 : 58) : 0, hInv = (cmp ? 60 : 74) + (invPh.length && !this._eMode ? 40 : 0), hBat = b ? (cmp ? 88 : 112) : 0, LG2 = cmp ? 18 : LG;
     const needMid = hPr + PG + hTop + hInv + hBat + (hTop ? LG2 : 0) + (hBat ? LG2 : 0);
     const topH = Math.round(Math.max(cmp ? 200 : 240, needSides, needMid));
     const rows = Math.ceil(devs.length / 3), RH = UMIN, gridTop = topH + 30;
@@ -1121,7 +1125,13 @@ class TotalHomeEnergyRingCard extends HTMLElement {
         const br = side === "r" && c.branch !== false && list.length > 1;
         const ty = br && i === 0 ? p.y + Math.min(28, p.h / 3) : p.y + p.h / 2, ex = side === "l" ? tx + CW : tx, bx = side === "l" ? (ex + inT.x) / 2 : br ? inT.x + MW + (ex - inT.x - MW) * 0.35 : (inT.x + MW + ex) / 2;
         // branch from the bus to the tile; sources flow towards the bus when positive, loads away from it
-        const src = side === "l" && !g.load;   // left tiles are sources unless marked load: true
+        const src = side === "l" && !g.load && !isIn(x);   // left tiles are sources unless marked load: true / ac: in
+        if (side === "l" && isIn(x) && list.length > 1) {   // before the inverter: fed from the grid tile, not from the inverter
+          const gp = pos[0], gy = gp.y + gp.h / 2, rr3 = Math.min(6, Math.abs(ty - gy) / 2);
+          const d = `M${ex},${gy}H${bx - rr3}Q${bx},${gy} ${bx},${gy + rr3}V${ty - rr3}Q${bx},${ty} ${bx - rr3},${ty}H${ex}`;
+          paths.push({ d, color: cc, on, rev: (x.tot || 0) < 0, pw: Math.abs(x.tot || 0) });
+          ys.push(ty); busX = bx; return;
+        }
         const toBus = src ? (x.tot || 0) >= 0 : (x.tot || 0) < 0;
         // home branch: the first right tile (home) hangs on the inverter, all other right tiles hang under home
         if (side === "r" && c.branch !== false && list.length > 1 && i > 0) {
@@ -1170,7 +1180,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     }
     // inverter
     const ist = inv.entity && hs[inv.entity], ival = ist ? (this._hass.formatEntityState ? this._hass.formatEntityState(ist) : ist.state) : null;
-    this._tile("inv", { ...inT, color: inv.color || "#8e8e93", on: true, icon: inv.icon || "mdi:sine-wave", name: inv.name || "Omvormer", value: ival, txt: true, cls: "inv", cfg: inv.entity ? { entity: inv.entity, navigate: inv.navigate } : null });
+    this._tile("inv", { ...inT, color: inv.color || "#8e8e93", on: true, icon: inv.icon || "mdi:sine-wave", name: inv.name || "Omvormer", value: ival, txt: true, cls: "inv" + (invPh.length && !this._eMode ? " ph" : ""), phases: invPh.length && !this._eMode ? invPh : null, cfg: { entity: inv.entity, navigate: inv.navigate, max: inv.max || 13500, color: inv.phase_color || "#5ac8fa" } });
     // battery
     if (b) {
       const alarm = b.soc_alarm != null ? Number(b.soc_alarm) : 15, bc = b.color || (soc != null && soc < alarm ? "#ff6b5e" : "#34c759");
