@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.7.8";
+const THEF_VERSION = "1.7.9";
 
 const T = {
   en: { home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -1153,7 +1153,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const pc = c.price && c.price.entity && this._hass.states[c.price.entity], hPr = pc && c.price.show !== false && !this._eMode && !this._pBot ? 30 : 0, PG = hPr ? 10 : 0;
     // middle column; compact when the sides are short (few devices), so the card shrinks with them
     const needSides = Math.max(need(sides.l), need(sides.r)), cmp = needSides < 300;
-    const invPh = (inv.phases || []).map((id) => this._num(id)), hTop = topL.length ? (cmp ? 50 : 58) : 0, hInv = (cmp ? 60 : 74) - (inv.show_state === false ? 22 : 0) + (invPh.length && !this._eMode ? 40 : 0) + (inv.model ? 12 : 0) + (vic ? 20 : 0), hBat = b ? (cmp ? 88 : 112) : 0, LG2 = cmp ? 18 : LG;
+    const invPh = (inv.phases || []).map((id) => this._num(id)), hTop = topL.length ? (cmp ? 50 : 58) : 0, hInv = (cmp ? 60 : 74) - (inv.show_state === false ? 22 : 0) + (invPh.length && !this._eMode ? 40 : 0) + (inv.model ? 12 : 0) + (vic ? 30 : 0), hBat = b ? (cmp ? 88 : 112) : 0, LG2 = cmp ? 18 : LG;
     const needMid = hPr + PG + hTop + hInv + hBat + (hTop ? LG2 : 0) + (hBat ? LG2 : 0) + (vic ? 40 : 0);
     let topH = Math.round(Math.max(cmp ? 200 : 240, needSides, needMid));
     // Victron layout: both columns on one row grid, so left and right tiles line up (a tile with phase bars takes two rows)
@@ -1170,7 +1170,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     // battery above the inverter (Victron layout, or battery_position: top): the inverter sits lower, leaving room for the AC lines
     const batTop = b && (c.battery_position ? c.battery_position === "top" : vic);
     const invY = hPr + PG + (hTop ? hTop + LG2 : 0) + (batTop ? hBat + LG2 : 0);   // middle column stacked from the top
-    const pY = hInv - (invPh.length && !this._eMode ? 40 : 0) - 19;   // AC-in/out 2 ports: in the band between model text and phase bars
+    const pY = inv.model ? 60 : 48;   // anchored below the title/model (phone fonts are relatively larger, so not measured from the bars)   // AC-in/out 2 ports: in the band between model text and phase bars
     const inT = { x: MX, y: invY, w: MW, h: hInv }, baT = batTop ? { x: MX, y: hPr + PG + (hTop ? hTop + LG2 : 0), w: MW, h: hBat } : { x: MX, y: invY + hInv + LG2, w: MW, h: hBat };
     const toT = { x: MX, y: Math.max(0, invY - LG2 - hTop), w: MW, h: hTop };
     const col = (list) => { const wts = list.map(wt), U = wts.reduce((a, v) => a + v, 0), n = list.length, tot = uh * U + G * (n - 1);
