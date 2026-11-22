@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.2.2";
+const THEF_VERSION = "1.3.0";
 
 const T = {
   en: { home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -1077,7 +1077,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const W = 400, CW = 106, MW = 112, MX = (W - MW) / 2, G = 12, UMIN = 58, LG = 26;
     // tiles with position: top go above the inverter in the middle column
     const topL = groups.l.filter((x) => x.g.position === "top").slice(0, 1);
-    const sides = { l: groups.l.filter((x) => x.g.position !== "top").slice(0, 5), r: groups.r.filter((x) => x.g.position !== "top").slice(0, 5) };
+    const sides = { l: groups.l.filter((x) => x.g.position !== "top").slice(0, 5), r: groups.r.filter((x) => x.g.position !== "top").slice(0, c.branch === false ? 5 : 7) };
     const wt = (x) => x.w ? x.w : x.g.size === "small" ? 1 : x.g.size === "large" ? 2 : x.ph.length ? 1.7 : 1;
     const units = (L) => L.reduce((a, x) => a + wt(x), 0);
     const need = (L) => L.length ? units(L) * UMIN + G * (L.length - 1) : 0;
@@ -1092,8 +1092,8 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const uh = Math.min(UMIN * 1.3, ...["l", "r"].filter((k) => sides[k].length).map((k) => (H - G * (sides[k].length - 1)) / units(sides[k])));
     const paths = [];
     // middle column: [top] - inverter (centred) - battery
-    const invY = Math.max(hPr + PG + (hTop ? hTop + LG2 : 0), Math.min(H / 2 - hInv / 2, H - hBat - (hBat ? LG2 : 0) - hInv));
-    const inT = { x: MX, y: invY, w: MW, h: hInv }, baT = { x: MX, y: H - hBat, w: MW, h: hBat };
+    const invY = hPr + PG + (hTop ? hTop + LG2 : 0);   // middle column stacked from the top
+    const inT = { x: MX, y: invY, w: MW, h: hInv }, baT = { x: MX, y: invY + hInv + LG2, w: MW, h: hBat };
     const toT = { x: MX, y: Math.max(0, invY - LG2 - hTop), w: MW, h: hTop };
     const col = (list) => { const wts = list.map(wt), U = wts.reduce((a, v) => a + v, 0), n = list.length, tot = uh * U + G * (n - 1);
       let y = c.align === "center" ? Math.max(0, Math.min(H - tot, inT.y + inT.h / 2 - tot / 2)) : 0;   // default: both columns start at the top
@@ -1112,17 +1112,28 @@ class TotalHomeEnergyRingCard extends HTMLElement {
         const exp = g.export_color && (x.tot || 0) < 0, cc = exp ? g.export_color : color, on = Math.abs(x.tot || 0) > minP;
         const sub = g.export_color ? ((x.tot || 0) < -minP ? (g.export_name || "teruglevering") : (x.tot || 0) > minP ? (g.import_name || "afname") : "") : "";
         this._tile(side + i, { x: tx, y: p.y, w: CW, h: p.h, color: cc, on, icon: g.icon || "mdi:flash", name: g.name, value: this._fmtHtml(x.tot), phases: x.ph.length ? x.ph : null, sub: x.sub != null ? x.sub : !x.ph.length && sub && !p.sm ? sub : "", cls: p.sm ? "sm" : "", cfg: g });
-        const ty = p.y + p.h / 2, ex = side === "l" ? tx + CW : tx, bx = side === "l" ? (ex + inT.x) / 2 : (inT.x + MW + ex) / 2;
+        const br = side === "r" && c.branch !== false && list.length > 1;
+        const ty = br && i === 0 ? p.y + Math.min(28, p.h / 3) : p.y + p.h / 2, ex = side === "l" ? tx + CW : tx, bx = side === "l" ? (ex + inT.x) / 2 : br ? inT.x + MW + (ex - inT.x - MW) * 0.35 : (inT.x + MW + ex) / 2;
         // branch from the bus to the tile; sources flow towards the bus when positive, loads away from it
         const src = side === "l" && !g.load;   // left tiles are sources unless marked load: true
         const toBus = src ? (x.tot || 0) >= 0 : (x.tot || 0) < 0;
+        // home branch: the first right tile (home) hangs on the inverter, all other right tiles hang under home
+        if (side === "r" && c.branch !== false && list.length > 1 && i > 0) {
+          const hp = pos[0], hb = hp.y + hp.h - 14, bxx = tx - 9, rr2 = Math.min(6, Math.abs(ty - hb) / 2);
+          const d = `M${tx},${hb}H${bxx + rr2}Q${bxx},${hb} ${bxx},${hb + rr2}V${ty - rr2}Q${bxx},${ty} ${bxx + rr2},${ty}H${tx}`;
+          paths.push({ d, color: cc, on, rev: (x.tot || 0) < 0, pw: Math.abs(x.tot || 0) });
+          ys.push(ty); busX = bxx; return;
+        }
         const iyy = inT.y + inT.h / 2, ixx = side === "l" ? inT.x : inT.x + MW, sy = iyy > ty ? 1 : -1, sx = side === "l" ? 1 : -1, rr = Math.min(6, Math.abs(iyy - ty) / 2);
         // full route tile -> bus -> inverter, so the dots also run along the vertical bus
         const route = Math.abs(iyy - ty) < 1 ? `M${ex},${ty}H${ixx}` : `M${ex},${ty}H${bx - sx * rr}Q${bx},${ty} ${bx},${ty + sy * rr}V${iyy}H${ixx}`;
         paths.push({ d: route, color: cc, on, rev: !toBus, pw: Math.abs(x.tot || 0) });
         ys.push(ty); net += side === "l" ? (x.tot || 0) : -(x.tot || 0); busX = bx;
       });
-      if (list.length) {
+      if (side === "r" && c.branch !== false && list.length > 1) {
+        const hp = pos[0], hb = hp.y + hp.h - 14, bxx = W - CW - 9;
+        bus.push(`M${W - CW},${hb}H${bxx}V${Math.max(...ys)}`);
+      } else if (list.length) {
         const iy = inT.y + inT.h / 2, ix = side === "l" ? inT.x : inT.x + MW;
         ys.push(iy); const y0 = Math.min(...ys), y1 = Math.max(...ys);
         bus.push(`M${busX},${y0}V${y1}`);

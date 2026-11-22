@@ -158,6 +158,7 @@ chart:
 | `kw_from` | `1000` | From this many watts values are shown in kW |
 | `rest` | – | `true` or `{name, icon, color, of}`: adds an *Other* tile = home total minus all listed consumers. `of` names the base item (default: first right item) |
 | `align` | `top` | `center` places the side columns around the inverter |
+| `branch` | `true` | Consumers on the right hang under the first right item (home). `false` connects every item to the inverter |
 
 ### Battery (`battery`)
 
