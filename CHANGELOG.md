@@ -1,7 +1,7 @@
 # Changelog
 
 ## 1.2.0 (unreleased)
-- **Victron layout**: tell each item where it is connected with `ac: in`, `ac: out1` or `ac: out2`. The schematic then draws the grid and AC-in devices on the left, and AC-out 1 and AC-out 2 as separate branches on the right of the inverter, each with a small label. Sources on AC-out (like a PV inverter) use `source: true`. Labels can be renamed with `labels: {ac_in, ac_out1, ac_out2}`. In this layout the battery sits above the inverter (`battery_position: top|bottom` to choose).
+- **Victron layout**: tell each item where it is connected with `ac: in`, `ac: out1` or `ac: out2`. The schematic then draws the grid and AC-in devices on the left, and AC-out 1 and AC-out 2 as separate branches on the right of the inverter, each with a small label. Sources on AC-out (like a PV inverter) use `source: true`. Labels can be renamed with `labels: {ac_in, ac_out1, ac_out2}`. In this layout the battery sits above the inverter (`battery_position: top|bottom` to choose) and the AC-out branches leave the bottom of the inverter, so AC-out devices are spread over both columns (`split: false` keeps them on the right).
 - **Before or after the inverter**: give a device `ac: in` when it sits on the grid side (e.g. an EV charger before a Victron inverter). It then hangs on the grid line, under the grid tile, and is not subtracted from *Other*.
 - **Other without a home tile**: `rest: {name, entity}` uses its own total sensor (e.g. the whole-home consumption), so you can drop the home tile and show e.g. *Home other* next to your devices.
 - **Inverter phases**: `inverter.phases` shows per-phase bars (e.g. AC-out L1–L3) in the inverter tile.
