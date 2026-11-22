@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.0.2";
+const THEF_VERSION = "1.1.0";
 
 const T = {
   en: { home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -684,6 +684,9 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const c = JSON.parse(JSON.stringify(config));
     c.left = Array.isArray(c.left) ? c.left.slice(0, 8) : [];   // per page the visible number is limited later
     c.right = Array.isArray(c.right) ? c.right.slice(0, 8) : [];   // per page the visible number is limited later
+    // rest: { name, icon, color, of } – "everything else": the home total minus all listed consumers
+    if (c.rest) { const r = c.rest === true ? {} : c.rest;
+      c.right = c.right.filter((g) => !g._rest).concat([{ name: r.name || "Overig", icon: r.icon || "mdi:dots-horizontal-circle-outline", color: r.color || "#8e8e93", of: r.of, _rest: true, max: r.max }]); }
     c.battery = c.battery || null;
     c.max_power = Number(c.max_power) > 0 ? Number(c.max_power) : 10000;
     c.kw_from = Number(c.kw_from) > 0 ? Number(c.kw_from) : 1000;
@@ -804,7 +807,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     if (ent) this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: ent }, bubbles: true, composed: true }));
   }
   _group(g) {
-    if (g.type === "meter") return { tot: null, ph: [] };
+    if (g.type === "meter" || g._rest) return { tot: null, ph: [] };
     const inv = (v) => (v == null ? null : g.invert ? -v : v);
     const ph = (g.phases || []).map((id) => inv(this._num(id)));
     let tot = g.entity ? inv(this._num(g.entity)) : null;
@@ -822,6 +825,12 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     this._renderChart(false);
     const c = this._config, b = c.battery;
     const groups = { l: c.left.map((g) => ({ g, ...this._group(g) })), r: c.right.map((g) => ({ g, ...this._group(g) })) };
+    const rest = groups.r.find((x) => x.g._rest);
+    if (rest) {   // base = the group named in rest.of, else the first right-hand group (home)
+      const base = groups.r.find((x) => !x.g._rest && (rest.g.of ? x.g.name === rest.g.of : true));
+      const loads = [...groups.r.filter((x) => x !== base && x !== rest), ...groups.l.filter((x) => x.g.load)].filter((x) => x.g.type !== "meter" && x.g.in_rest !== false);
+      rest.tot = base && base.tot != null ? Math.max(0, base.tot - loads.reduce((a, x) => a + Math.max(0, x.tot || 0), 0)) : null;
+    }
     let soc = null, bp = null;
     if (b) { soc = this._num(b.soc);
       if (b.entity) bp = this._num(b.entity) * (b.invert ? -1 : 1);
@@ -1025,8 +1034,8 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const W = 400, CW = 106, MW = 112, MX = (W - MW) / 2, G = 12, UMIN = 58, LG = 26;
     // tiles with position: top go above the inverter in the middle column
     const topL = groups.l.filter((x) => x.g.position === "top").slice(0, 1);
-    const sides = { l: groups.l.filter((x) => x.g.position !== "top").slice(0, 4), r: groups.r.filter((x) => x.g.position !== "top").slice(0, 4) };
-    const wt = (x) => x.g.size === "small" ? 1 : x.g.size === "large" || x.ph.length ? 2 : 1;
+    const sides = { l: groups.l.filter((x) => x.g.position !== "top").slice(0, 5), r: groups.r.filter((x) => x.g.position !== "top").slice(0, 5) };
+    const wt = (x) => x.g.size === "small" ? 1 : x.g.size === "large" ? 2 : x.ph.length ? 1.7 : 1;
     const units = (L) => L.reduce((a, x) => a + wt(x), 0);
     const need = (L) => L.length ? units(L) * UMIN + G * (L.length - 1) : 0;
     const pc = c.price && c.price.entity && this._hass.states[c.price.entity], hPr = pc && c.price.show !== false ? 30 : 0, PG = hPr ? 10 : 0;
@@ -1043,7 +1052,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const toT = { x: MX, y: Math.max(0, invY - LG - hTop), w: MW, h: hTop };
     const col = (list) => { const wts = list.map(wt), U = wts.reduce((a, v) => a + v, 0), n = list.length, tot = uh * U + G * (n - 1);
       let y = c.align === "center" ? Math.max(0, Math.min(H - tot, inT.y + inT.h / 2 - tot / 2)) : 0;   // default: both columns start at the top
-      return wts.map((w) => { const r = { y, h: uh * w, sm: w < 2 }; y += uh * w + G; return r; }); };
+      return wts.map((w) => { const r = { y, h: uh * w, sm: w < 1.5 }; y += uh * w + G; return r; }); };
     const orth = (x1, y1, x2, y2, mx) => { if (Math.abs(y1 - y2) < 1) return `M${x1},${y1}H${x2}`; mx = mx == null ? (x1 + x2) / 2 : mx; const r = Math.min(8, Math.abs(y2 - y1) / 2, Math.abs(mx - x1)), sy = y2 > y1 ? 1 : -1, sx = x2 > x1 ? 1 : -1;
       return `M${x1},${y1}H${mx - sx * r}Q${mx},${y1} ${mx},${y1 + sy * r}V${y2 - sy * r}Q${mx},${y2} ${mx + sx * r},${y2}H${x2}`; };
     const bus = [];

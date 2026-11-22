@@ -16,7 +16,7 @@
 
 ## Waarom deze kaart?
 
-- **Meerdere energieverbruikers, niet alleen "huis"**: elk apparaat dat je meet (laadpaal, warmtepomp, boiler, wasmachine, tv, Shelly-stekkers…) krijgt een eigen tegel, kleur en bewegende lijn. Tot 4 per kant, plus solar in het midden, en de kaart groeit mee.
+- **Meerdere energieverbruikers, niet alleen "huis"**: elk apparaat dat je meet (laadpaal, warmtepomp, boiler, wasmachine, tv, Shelly-stekkers…) krijgt een eigen tegel, kleur en bewegende lijn. Tot 5 per kant, plus solar in het midden, en de kaart groeit mee. Een automatische tegel **Overig** toont alles wat je niet apart meet (`rest: true`).
 - **Drie weergaven in één kaart**: wissel met de knopjes rechtsboven; de kaart onthoudt je keuze.
   - **Ring**: de accu in het midden met vermogensbogen eromheen, per fase een eigen boog.
   - **Lijst**: de accuring met ernaast een compacte lijst, met een mini-grafiek van het laatste uur en fasebalkjes.

@@ -16,7 +16,7 @@
 
 ## Why this card?
 
-- **Many energy consumers, not just "home"**: show every device you measure (EV charger, heat pump, boiler, washing machine, TV, Shelly plugs…), each with its own tile, colour and animated line. Up to 4 per side, plus solar in the middle, and the card grows with them.
+- **Many energy consumers, not just "home"**: show every device you measure (EV charger, heat pump, boiler, washing machine, TV, Shelly plugs…), each with its own tile, colour and animated line. Up to 5 per side, plus solar in the middle, and the card grows with them. An automatic **Other** tile shows everything you don't measure separately.
 - **Three views in one card**: switch with the buttons in the top right; the card remembers your choice.
   - **Ring**: the battery in the middle, power arcs around it, one arc per phase.
   - **List**: the battery ring with a compact list beside it, each with a sparkline of the last hour and phase bars.
@@ -155,6 +155,7 @@ chart:
 | `show` | left items + first right item | Names of the items on the ring and list views, e.g. `[Solar, Grid, Home]` |
 | `max_power` | `10000` | Default full scale (W) of an arc or bar |
 | `kw_from` | `1000` | From this many watts values are shown in kW |
+| `rest` | – | `true` or `{name, icon, color, of}`: adds an *Other* tile = home total minus all listed consumers. `of` names the base item (default: first right item) |
 | `align` | `top` | `center` places the side columns around the inverter |
 
 ### Battery (`battery`)
@@ -171,7 +172,7 @@ chart:
 
 ### Items (`left` / `right`)
 
-`left` holds sources (grid, solar…), `right` holds consumers. Up to 4 tiles per side in the schematic.
+`left` holds sources (grid, solar…), `right` holds consumers. Up to 5 tiles per side in the schematic.
 
 | Option | Description |
 |---|---|
@@ -185,6 +186,7 @@ chart:
 | `position: top` | Place the item above the inverter in the schematic (e.g. solar) |
 | `load: true` | A consumer placed on the left side (flow direction is reversed) |
 | `size` | `small` or `large` tile in the schematic |
+| `in_rest: false` | Don't subtract this item when calculating *Other* (e.g. an EV charger that isn't part of the home total) |
 | `navigate` | Path to open on tap (otherwise the more-info dialog opens) |
 | `type: meter` | Info tile without a line, e.g. gas or water. Use `entity` (current value), `today` (a daily sensor) or `total` (a meter; today's usage is calculated from the statistics) |
 
