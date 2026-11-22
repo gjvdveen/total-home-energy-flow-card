@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.7.3";
+const THEF_VERSION = "1.7.4";
 
 const T = {
   en: { home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -1064,7 +1064,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const ph = (phases || []).map((v, i) => `<div title="L${i + 1}: ${Math.round(v || 0)} W">L${i + 1}<i><b style="width:${(Math.min(1, Math.abs(v || 0) / pmax) * 100).toFixed(1)}%;--pc:${g0.export_color && (v || 0) < 0 ? g0.export_color : (g0.color || color)}"></b></i></div>`).join("");
     t.innerHTML = `<div class="th"><ha-icon icon="${icon}"></ha-icon><span></span></div><div class="tv ${txt ? "txt" : ""}"></div>${ph ? `<div class="pb tb">${ph}</div>` : ""}${[].concat(sub || []).filter(Boolean).map((_, i) => `<div class="ts${i ? " t2" : ""}"></div>`).join("")}`;
     t.querySelector(".th span").textContent = name || "";
-    if (txt) t.querySelector(".tv").textContent = value == null ? "–" : value; else t.querySelector(".tv").innerHTML = value;
+    if (txt) { const tv = t.querySelector(".tv"); tv.textContent = value == null ? (key === "inv" ? "" : "–") : value; if (!tv.textContent) tv.style.display = "none"; } else t.querySelector(".tv").innerHTML = value;
     const ts = t.querySelectorAll(".ts"); [].concat(sub || []).filter(Boolean).forEach((v, i) => (ts[i].innerHTML = v));
     t._seen = true;
     return t;
@@ -1109,7 +1109,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const pc = c.price && c.price.entity && this._hass.states[c.price.entity], hPr = pc && c.price.show !== false && !this._eMode ? 30 : 0, PG = hPr ? 10 : 0;
     // middle column; compact when the sides are short (few devices), so the card shrinks with them
     const needSides = Math.max(need(sides.l), need(sides.r)), cmp = needSides < 300;
-    const invPh = (inv.phases || []).map((id) => this._num(id)), hTop = topL.length ? (cmp ? 50 : 58) : 0, hInv = (cmp ? 60 : 74) + (invPh.length && !this._eMode ? 40 : 0) + (inv.model ? 12 : 0), hBat = b ? (cmp ? 88 : 112) : 0, LG2 = cmp ? 18 : LG;
+    const invPh = (inv.phases || []).map((id) => this._num(id)), hTop = topL.length ? (cmp ? 50 : 58) : 0, hInv = (cmp ? 60 : 74) - (inv.show_state === false ? 22 : 0) + (invPh.length && !this._eMode ? 40 : 0) + (inv.model ? 12 : 0), hBat = b ? (cmp ? 88 : 112) : 0, LG2 = cmp ? 18 : LG;
     const needMid = hPr + PG + hTop + hInv + hBat + (hTop ? LG2 : 0) + (hBat ? LG2 : 0) + (vic ? 40 : 0);
     const topH = Math.round(Math.max(cmp ? 200 : 240, needSides, needMid));
     const rows = Math.ceil(devs.length / 3), RH = UMIN, gridTop = topH + 30;
@@ -1221,7 +1221,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       paths.push({ d: `M${x0},${y1}V${y2}`, color: cc, on, rev: (x.tot || 0) < 0, pw: Math.abs(x.tot || 0) });
     }
     // inverter
-    const ist = inv.entity && hs[inv.entity], ival = ist ? (this._hass.formatEntityState ? this._hass.formatEntityState(ist) : ist.state) : null;
+    const ist = inv.entity && inv.show_state !== false && hs[inv.entity], ival = ist ? (this._hass.formatEntityState ? this._hass.formatEntityState(ist) : ist.state) : null;
     this._tile("inv", { ...inT, color: inv.color || (vic ? "#3b8ed8" : "#8e8e93"), on: true, icon: inv.icon || "mdi:sine-wave", name: inv.name || "Omvormer", value: ival, txt: true, cls: "inv" + (invPh.length && !this._eMode ? " ph" : ""), phases: invPh.length && !this._eMode ? invPh : null, cfg: { entity: inv.entity, navigate: inv.navigate, max: inv.max || 13500, color: inv.phase_color || "#5ac8fa" } });
     { const t = this._tiles.inv;   // optional model line and own image (e.g. a logo file in /local)
       if (inv.model) { const m = document.createElement("div"); m.className = "model"; m.textContent = inv.model; t.querySelector(".tv").after(m); }
