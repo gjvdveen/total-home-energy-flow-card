@@ -188,7 +188,8 @@ chart:
 | `max` | Full scale in W for this item (split over the phases) |
 | `position: top` | Place the item above the inverter in the schematic (e.g. solar) |
 | `load: true` | A consumer placed on the left side (flow direction is reversed) |
-| `ac: in` | Device sits before the inverter (grid side): it hangs on the grid line and is left out of *Other* |
+| `ac` | `in`, `out1` or `out2`: where the item is connected to a Victron inverter/charger. As soon as one item uses `out1`/`out2` the schematic switches to the Victron layout (AC-in left, AC-out 1 and AC-out 2 right). `in` items are left out of *Other* unless `in_rest: true` |
+| `source: true` | The item produces power on an AC-out branch (e.g. a PV inverter on AC-out 1) |
 | `size` | `small` or `large` tile in the schematic |
 | `in_rest: false` | Don't subtract this item when calculating *Other* (e.g. an EV charger that isn't part of the home total) |
 | `navigate` | Path to open on tap (otherwise the more-info dialog opens) |
@@ -231,6 +232,9 @@ The price label only needs a sensor whose state is the current price, so it work
 Lists of `[time, price]` pairs are recognised automatically. Integrations that only offer the prices through an action (such as the built-in Nord Pool and EnergyZero integrations) need a template sensor first; without a list the card simply hides the price tab.
 
 ## Victron users
+
+Use `ac: in / out1 / out2` on your items to draw the schematic exactly like your installation is wired, e.g. the EV charger on AC-in and a PV inverter (`source: true`) plus your backup loads on AC-out 1.
+
 
 With the [Victron GX integration](https://github.com/sfstar/hass-victron) or Modbus you typically use:
 
