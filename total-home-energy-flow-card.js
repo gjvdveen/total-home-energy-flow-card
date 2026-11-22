@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.7.0";
+const THEF_VERSION = "1.7.1";
 
 const T = {
   en: { home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -1221,7 +1221,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     }
     // inverter
     const ist = inv.entity && hs[inv.entity], ival = ist ? (this._hass.formatEntityState ? this._hass.formatEntityState(ist) : ist.state) : null;
-    this._tile("inv", { ...inT, color: inv.color || "#8e8e93", on: true, icon: inv.icon || "mdi:sine-wave", name: inv.name || "Omvormer", value: ival, txt: true, cls: "inv" + (invPh.length && !this._eMode ? " ph" : ""), phases: invPh.length && !this._eMode ? invPh : null, cfg: { entity: inv.entity, navigate: inv.navigate, max: inv.max || 13500, color: inv.phase_color || "#5ac8fa" } });
+    this._tile("inv", { ...inT, color: inv.color || (vic ? "#3b8ed8" : "#8e8e93"), on: true, icon: inv.icon || "mdi:sine-wave", name: inv.name || "Omvormer", value: ival, txt: true, cls: "inv" + (invPh.length && !this._eMode ? " ph" : ""), phases: invPh.length && !this._eMode ? invPh : null, cfg: { entity: inv.entity, navigate: inv.navigate, max: inv.max || 13500, color: inv.phase_color || "#5ac8fa" } });
     // battery
     if (b) {
       const alarm = b.soc_alarm != null ? Number(b.soc_alarm) : 15, bc = b.color || (soc != null && soc < alarm ? "#ff6b5e" : "#34c759");
