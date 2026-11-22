@@ -246,6 +246,25 @@ Lists of `[time, price]` pairs are recognised automatically. Integrations that o
 
 Use `ac: in / out1 / out2` on your items to draw the schematic exactly like your installation is wired, e.g. the EV charger on AC-in and a PV inverter (`source: true`) plus your backup loads on AC-out 1.
 
+<img src="images/en-overview-acout2.png" width="45%" align="right" alt="Schematic with AC-in, AC-out 1 and AC-out 2">
+
+In this example the EV charger sits on AC-in, solar and the backed-up loads on AC-out 1, and the heat pump and dryer on AC-out 2 (no backup):
+
+```yaml
+left:
+  - { name: Grid, entity: sensor.grid_power, phases: [sensor.grid_l1, sensor.grid_l2, sensor.grid_l3] }
+  - { name: EV charger, entity: sensor.ev_power, ac: in, in_rest: true }
+right:
+  - { name: Solar, entity: sensor.pv_power, ac: out1, source: true }
+  - { name: Heat pump, entity: sensor.heat_pump_power, ac: out2 }
+  - { name: Dryer, entity: sensor.dryer_power, ac: out2 }
+  - { name: Washer, entity: sensor.washer_power, ac: out1 }
+  - { name: TV, entity: sensor.tv_power, ac: out1 }
+rest: { name: Home other, entity: sensor.home_consumption }
+```
+
+<br clear="right">
+
 
 With the [Victron GX integration](https://github.com/sfstar/hass-victron) or Modbus you typically use:
 

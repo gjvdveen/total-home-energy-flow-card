@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.2.0";
+const THEF_VERSION = "1.2.1";
 
 const T = {
   en: { charged: "charged", discharged: "discharged", home_total: "Home total", produced: "produced", used: "used", imported: "imported", exp_short: "export", today_total: "Total today", home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -1257,7 +1257,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       if (vicPos) {   // top group from the top, AC-out 1 group from the bottom up
         const top = side === "l" ? vicPos.lTop : vicPos.rTop, bot = side === "l" ? vicPos.lBot : vicPos.rBot, m = new Map();
         let y = 0; for (const x of top) { const h = sl(x) * SP - G; m.set(x, { y, h, sm: sl(x) < 2 }); y += h + G; }
-        if (vicPos.rTop.length) { y = H + G; for (const x of bot.slice().reverse()) { const h = sl(x) * SP - G; y -= h + G; m.set(x, { y, h, sm: true }); } }   // AC-out 2 at the top: AC-out 1 from the bottom up
+        if (vicPos.rTop.length && side === "r") { y = H + G; for (const x of bot.slice().reverse()) { const h = sl(x) * SP - G; y -= h + G; m.set(x, { y, h, sm: true }); } }   // AC-out 2 at the top: AC-out 1 from the bottom up
         else for (const x of bot) { const h = sl(x) * SP - G; m.set(x, { y, h, sm: true }); y += h + G; }   // no AC-out 2: everything from the top, no gaps
         pos = list.map((x) => m.get(x));
       }

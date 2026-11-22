@@ -91,6 +91,14 @@ left:
     export_name: teruglevering
 ```
 
+## Victron: AC-in, AC-out 1 en AC-out 2
+
+<img src="images/nl-overview-acout2.png" width="45%" align="right" alt="Schema met AC-in, AC-out 1 en AC-out 2">
+
+Geef per apparaat met `ac: in`, `ac: out1` of `ac: out2` aan waar het op de omvormer zit; de kaart tekent het schema dan zoals je installatie bedraad is. In dit voorbeeld zit de laadpaal op AC-in, solar (`source: true`) en de noodstroomgroepen op AC-out 1, en de warmtepomp en droger op AC-out 2 (zonder noodstroom). Solar staat altijd links onder het net; verbruikers vullen eerst de rechterkolom.
+
+<br clear="right">
+
 ## Stroomprijzen
 
 Het prijslabel heeft alleen een sensor nodig met de huidige prijs, dus het werkt met elke prijsintegratie. Voor het bolletje, het pijltje en de prijsgrafiek is ook de lijst met uurprijzen in een attribuut nodig:

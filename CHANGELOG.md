@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1 (2026-11-22)
+- With AC-out 2 in use, sources (solar) now also sit right under the grid on the left instead of at the bottom.
+- README: example and screenshot of a setup with AC-in, AC-out 1 and AC-out 2.
+
 ## 1.2.0 (2026-11-22)
 - **Costs in *Today***: every tile with an `energy` sensor shows what it cost today, hour by hour at that hour's price (grid: import minus export; *Other*: from the home balance). Turn off with `price.today_cost: false`.
 - **Cheapest block**: the unfolded price list also shows the cheapest block of 3 hours (`price.block_hours`), for today from now on and for tomorrow.
