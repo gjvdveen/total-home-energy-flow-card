@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.8.5";
+const THEF_VERSION = "1.8.6";
 
 const T = {
   en: { home_total: "Home total", produced: "produced", used: "used", imported: "imported", exp_short: "export", today_total: "Total today", home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -1293,6 +1293,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       const t = this._tile("bat", { ...baT, color: bc, on: true, icon: b.icon || "mdi:home-battery", name: b.name || "Accu", value: soc == null ? "–" : `${Math.round(soc)}<span class="u">%\u2002${this._eMode ? "" : st}</span>`,
         sub: [l1, l2], cls: "bat", cfg: b });
       t.style.setProperty("--soc", (soc == null ? 0 : Math.max(0, Math.min(100, soc))) + "%");
+      if (b.model) { const m = document.createElement("div"); m.className = "model"; m.style.cssText = "text-align:left;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.25"; m.textContent = String(b.model).replace(/-/g, "\u2011"); t.querySelector(".tv").after(m); }   // brand/type, like the inverter
       const bT = b && Number(b.min_power) >= 0 ? Number(b.min_power) : 10, ch = (bp || 0) < -bT, on = Math.abs(bp || 0) > bT, x0 = W / 2, y1 = batTop ? inT.y : inT.y + inT.h, y2 = batTop ? baT.y + baT.h : baT.y;
       paths.push({ d: ch ? `M${x0},${y1}V${y2}` : `M${x0},${y2}V${y1}`, color: bc, on });
     }

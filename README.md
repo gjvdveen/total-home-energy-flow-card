@@ -172,6 +172,7 @@ chart:
 | `invert` | Flip the sign of `entity` |
 | `voltage`, `current`, `temperature` | Optional extra values |
 | `soc_alarm` | Below this % the battery turns red (default `15`) |
+| `model` | Brand/type line in the schematic battery tile, e.g. `4× Hithium HPC-30LV-7M` (wraps to two lines on narrow screens) |
 | `energy_charge`, `energy_discharge` | Battery kWh meters for the *Today* view |
 | `name`, `icon`, `color`, `navigate` | Look and tap action |
 | `charging_name`, `discharging_name`, `idle_name` | Your own words for the states |
