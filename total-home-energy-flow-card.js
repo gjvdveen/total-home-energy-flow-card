@@ -4,12 +4,12 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.7.9";
+const THEF_VERSION = "1.8.0";
 
 const T = {
-  en: { home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
+  en: { produced: "produced", used: "used", imported: "imported", exp_short: "export", today_total: "Total today", home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
         charging: "charging", discharging: "discharging", supplying: "supplying", idle: "idle", off: "off", rest: "Other", unavailable: "unavailable", legend: "Legend", charts: "Charts", gas: "Gas", water: "Water", today: "today", price: "Price", consumption: "Usage", soc: "Battery", nodata: "No data", ring: "Ring: where the home's power comes from", lines: "Line thickness = power · dots show direction", consumers: "Devices", devices_n: "devices", now: "now", at: "at", today_tab: "Today", now_tab: "Now", price_legend: "Price (on the grid tile): dot green = cheap · orange = average · red = expensive compared with today · arrow = next price goes up or down" },
-  nl: { home: "Huis", solar: "Solar", grid: "Net", battery: "Accu", import: "afname", export: "teruglevering",
+  nl: { produced: "opbrengst", used: "verbruik", imported: "afname", exp_short: "terug", today_total: "Totaal vandaag", home: "Huis", solar: "Solar", grid: "Net", battery: "Accu", import: "afname", export: "teruglevering",
         charging: "laden", discharging: "ontladen", supplying: "levert", idle: "rust", off: "uit", rest: "Overig", unavailable: "niet beschikbaar", legend: "Legenda", charts: "Grafieken", gas: "Gas", water: "Water", today: "vandaag", price: "Prijs", consumption: "Verbruik", soc: "Accu", nodata: "Geen gegevens", ring: "Ring: waar de stroom van het huis vandaan komt", lines: "Dikte van de lijn = vermogen · bolletjes = richting", consumers: "Apparaten", devices_n: "apparaten", now: "nu", at: "om", today_tab: "Vandaag", now_tab: "Nu", price_legend: "Prijs (bij Net): bolletje groen = goedkoop · oranje = gemiddeld · rood = duur t.o.v. vandaag · pijltje = volgende prijs hoger of lager" },
 };
 
@@ -889,7 +889,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     this._el.pg.querySelectorAll("span").forEach((sp) => { sp.hidden = !pages.includes(sp.dataset.p); sp.classList.toggle("sel", sp.dataset.p === this._page); });
     // own title per page: page_titles: { ring: ..., list: ..., overview: ... }; falls back to title
     const pt = c.page_titles || {};
-    this._el.title.textContent = pt[this._page] != null ? pt[this._page] : (c.title || "");
+    this._el.title.textContent = pt[this._page] != null ? pt[this._page] : this._page === "today" ? this._t("today_total") : (c.title || "");   // today: always say what the numbers are
     if (c.title_color) this._el.title.style.setProperty("--thef-title", c.title_color);
     this._el.pg.querySelectorAll("span").forEach((sp) => { sp.title = pt[sp.dataset.p] || sp.dataset.p; });
     this._el.stage.hidden = this._page !== "ring"; this._el.ov.hidden = !["overview", "today"].includes(this._page); this._el.ls.hidden = this._page !== "list";
@@ -1014,9 +1014,11 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       if (g.type === "meter") return { ...x };
       if (g.energy_import || g.energy_export) {
         const i = st(g.energy_import) || 0, e = st(g.energy_export) || 0;
-        return { ...x, tot: i, ph: [], w: 1.5, sub: e > 0 ? (g.export_short || "terug") + " " + this._fmtHtml(e) : "", imp: i, exp: e };
+        return { ...x, tot: i, ph: [], w: 1.5, sub: this._t("imported") + (e > 0 ? " · " + (g.export_short || this._t("exp_short")) + " " + this._fmtHtml(e) : ""), imp: i, exp: e };
       }
-      return { ...x, tot: g._rest ? null : (g.energy ? st(g.energy) : null), ph: [], w: 1 };
+      // say what the kWh is: produced by a source (solar), used by a consumer
+      const isSrc = g.source || g.position === "top" || (groups.l.includes(x) && !g.load && g.ac !== "in");
+      return { ...x, tot: g._rest ? null : (g.energy ? st(g.energy) : null), ph: [], w: 1, sub: this._t(isSrc ? "produced" : "used") };
     };
     this._eMode = true;
     const tgs = { l: groups.l.map(tg), r: groups.r.map(tg) };
