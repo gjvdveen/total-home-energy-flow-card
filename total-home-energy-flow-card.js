@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.6.0";
+const THEF_VERSION = "1.6.1";
 
 const T = {
   en: { home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -728,6 +728,9 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       .prc { position:absolute; z-index:1; box-sizing:border-box; display:flex; align-items:center; justify-content:center; gap:6px; border-radius:999px; background: rgba(127,127,127,.16); cursor:pointer;
         font-size: clamp(11px, 3.2cqw, 15px); font-weight:600; font-variant-numeric: tabular-nums; white-space:nowrap; }
       .prc i { width:8px; height:8px; border-radius:50%; flex:0 0 auto; } .prc ha-icon { --mdc-icon-size: clamp(13px, 3.6cqw, 17px); opacity:.7; }
+      .port { position:absolute; z-index:2; transform:translate(-50%,-50%); padding:1px 7px; border-radius:8px; white-space:nowrap;
+        font-size: clamp(8.5px, 2.4cqw, 11px); font-weight:700; letter-spacing:.3px; color: var(--primary-text-color);
+        background: var(--ha-card-background, var(--card-background-color, #1c1c1e)); border:1.5px solid rgba(127,127,127,.55); }
       .tile.on { border-color: var(--c); } .tile:not(.on) { opacity:.6; }
       .tile .th { display:flex; align-items:center; gap:4px; font-size: clamp(10px, 2.9cqw, 13px); opacity:.8; white-space:nowrap; overflow:hidden; }
       .tile .th ha-icon { --mdc-icon-size: clamp(12px, 3.4cqw, 16px); color: var(--c); flex:0 0 auto; }
@@ -1244,8 +1247,18 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       for (const sd of ["l", "r"]) { const o = ob.filter((q) => q.side === sd); if (o.length) bus.push(`M${o[0].vx},${Math.min(hy, ...o.map((q) => q.ty))}V${Math.max(hy, ...o.map((q) => q.ty))}`); }
       if (two) yo2 = [1]; else yo1 = [1];
     }
+    // Victron: ports as small pills on the inverter edges (clearer than loose text)
+    this._el.ov.querySelectorAll(".port").forEach((e) => (e._seen = false));
+    const port = (key, txt, x, y) => { let e = this._el.ov.querySelector(`.port[data-k="${key}"]`);
+      if (!e) { e = document.createElement("div"); e.className = "port"; e.dataset.k = key; this._el.ov.appendChild(e); }
+      e.textContent = txt; e._seen = true; const HH = this._ovH || 250; Object.assign(e.style, { left: x / 4 + "%", top: y / HH * 100 + "%" }); };
+    if (vic) { const L = c.labels || {};
+      port("in", L.ac_in || "AC-in", inT.x, inT.y + inT.h / 2);
+      if (yo1.length) port("o1", L.ac_out1 || "AC-out 1", W / 2, inT.y + inT.h);
+      if (yo2.length) port("o2", L.ac_out2 || "AC-out 2", W / 2 + 10, inT.y + inT.h + 26); }
+    this._el.ov.querySelectorAll(".port").forEach((e) => { if (!e._seen) e.remove(); });
     let lbl = "";
-    if (vic) { const t = (x, y, txt, anc) => `<text x="${x}" y="${y}" font-size="7.5" fill="currentColor" opacity=".55" text-anchor="${anc}" font-weight="600">${txt}</text>`;
+    if (false) { const t = (x, y, txt, anc) => `<text x="${x}" y="${y}" font-size="7.5" fill="currentColor" opacity=".55" text-anchor="${anc}" font-weight="600">${txt}</text>`;
       const L = c.labels || {};   // small labels on the stubs next to the inverter
       lbl += t(inT.x - 3, inT.y + inT.h / 2 - 5, L.ac_in || "AC-in", "end");
       if (yo1.length) lbl += t(W / 2 + 4, inT.y + inT.h + 10, L.ac_out1 || "AC-out 1", "start");
