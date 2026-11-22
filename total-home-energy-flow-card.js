@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.8.1";
+const THEF_VERSION = "1.8.2";
 
 const T = {
   en: { produced: "produced", used: "used", imported: "imported", exp_short: "export", today_total: "Total today", home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -729,8 +729,8 @@ class TotalHomeEnergyRingCard extends HTMLElement {
         font-size: clamp(11px, 3.2cqw, 15px); font-weight:600; font-variant-numeric: tabular-nums; white-space:nowrap; }
       .prc i { width:8px; height:8px; border-radius:50%; flex:0 0 auto; } .prc ha-icon { --mdc-icon-size: clamp(13px, 3.6cqw, 17px); opacity:.7; }
       .port { position:absolute; z-index:2; transform:translate(-50%,-50%); padding:1px 7px; border-radius:8px; white-space:nowrap;
-        font-size: clamp(8.5px, 2.4cqw, 11px); font-weight:700; letter-spacing:.3px; color: var(--primary-text-color);
-        background: var(--ha-card-background, var(--card-background-color, #1c1c1e)); border:1.5px solid rgba(127,127,127,.55); }
+        font-size: clamp(8.5px, 2.4cqw, 11px); font-weight:500; letter-spacing:.2px; color: color-mix(in srgb, var(--primary-text-color, #fff) 70%, transparent);
+        background: var(--ha-card-background, var(--card-background-color, #1c1c1e)); border:1px solid rgba(127,127,127,.4); }
       .tile.on { border-color: var(--c); } .tile:not(.on) { opacity:.6; }
       .tile .th { display:flex; align-items:center; gap:4px; font-size: clamp(10px, 2.9cqw, 13px); opacity:.8; white-space:nowrap; overflow:hidden; }
       .tile .th ha-icon { --mdc-icon-size: clamp(12px, 3.4cqw, 16px); color: var(--c); flex:0 0 auto; }
