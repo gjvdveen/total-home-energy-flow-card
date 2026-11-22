@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.8.4";
+const THEF_VERSION = "1.8.5";
 
 const T = {
   en: { home_total: "Home total", produced: "produced", used: "used", imported: "imported", exp_short: "export", today_total: "Total today", home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -905,7 +905,9 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     // no home tile but rest has its own total (rest.entity): the ring and list pages show that total as "Home total"
     if (rest && rest.g.entity && !groups.r.some((x) => x.g._home)) {
       const rc = c.rest || {};
-      groups.r.unshift({ g: { name: rc.total_name || this._t("home_total"), entity: rest.g.entity, icon: rc.total_icon || "mdi:home", color: rc.total_color || rc.color || DEFAULT_COLORS.home, _home: true }, tot: this._num(rest.g.entity), ph: [] });
+      const inv = c.inverter || {}, hph = rc.phases || inv.phases;   // phases: own list, else the inverter output phases
+      const hg = { name: rc.total_name || this._t("home_total"), entity: rest.g.entity, phases: hph, max: rc.max || inv.max, icon: rc.total_icon || "mdi:home", color: rc.total_color || rc.color || DEFAULT_COLORS.home, _home: true };
+      groups.r.unshift({ g: hg, ...this._group(hg) });
     }
     if (this._page === "list") { this._renderList(groups, soc, bp); return; }
     const CX = 200, CY = 145, R0 = 178, GAP = 8, SPAN = 47, SEP = 8;
@@ -918,7 +920,8 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     // side arcs
     const labs = [];
     for (const side of ["l", "r"]) {
-      const list = this._pick(groups).filter((x) => groups[side].includes(x)).slice(0, 3), n = list.length, sgn = side === "l" ? -1 : 1;
+      const hasHome = groups.r.some((y) => y.g._home), onL = (x) => hasHome ? !x.g._home : groups.l.includes(x);   // with Home total: all sources (grid, solar) left, home right
+      const list = this._pick(groups).filter((x) => (side === "l") === onL(x)).slice(0, 3), n = list.length, sgn = side === "l" ? -1 : 1;
       if (!n) continue;
       const seg = (2 * SPAN - SEP * (n - 1)) / n;
       list.forEach((x, i) => {
