@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.1.0";
+const THEF_VERSION = "1.1.1";
 
 const T = {
   en: { home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -1039,17 +1039,19 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const units = (L) => L.reduce((a, x) => a + wt(x), 0);
     const need = (L) => L.length ? units(L) * UMIN + G * (L.length - 1) : 0;
     const pc = c.price && c.price.entity && this._hass.states[c.price.entity], hPr = pc && c.price.show !== false ? 30 : 0, PG = hPr ? 10 : 0;
-    const hTop = topL.length ? 58 : 0, hInv = 74, hBat = b ? 112 : 0;
-    const needMid = hPr + PG + hTop + hInv + hBat + (hTop ? LG : 0) + (hBat ? LG : 0);
-    const H = Math.round(Math.max(240, need(sides.l), need(sides.r), needMid));
+    // middle column; compact when the sides are short (few devices), so the card shrinks with them
+    const needSides = Math.max(need(sides.l), need(sides.r)), cmp = needSides < 300;
+    const hTop = topL.length ? (cmp ? 50 : 58) : 0, hInv = cmp ? 60 : 74, hBat = b ? (cmp ? 88 : 112) : 0, LG2 = cmp ? 18 : LG;
+    const needMid = hPr + PG + hTop + hInv + hBat + (hTop ? LG2 : 0) + (hBat ? LG2 : 0);
+    const H = Math.round(Math.max(cmp ? 200 : 240, needSides, needMid));
     if (this._ovH !== H) { this._ovH = H; this._el.ov.style.aspectRatio = `400 / ${H}`; this._el.ovsvg.setAttribute("viewBox", `0 0 400 ${H}`); }
     // one unit height for both columns, so tiles of the same kind are the same size left and right
     const uh = Math.min(UMIN * 1.3, ...["l", "r"].filter((k) => sides[k].length).map((k) => (H - G * (sides[k].length - 1)) / units(sides[k])));
     const paths = [];
     // middle column: [top] - inverter (centred) - battery
-    const invY = Math.max(hPr + PG + (hTop ? hTop + LG : 0), Math.min(H / 2 - hInv / 2, H - hBat - (hBat ? LG : 0) - hInv));
+    const invY = Math.max(hPr + PG + (hTop ? hTop + LG2 : 0), Math.min(H / 2 - hInv / 2, H - hBat - (hBat ? LG2 : 0) - hInv));
     const inT = { x: MX, y: invY, w: MW, h: hInv }, baT = { x: MX, y: H - hBat, w: MW, h: hBat };
-    const toT = { x: MX, y: Math.max(0, invY - LG - hTop), w: MW, h: hTop };
+    const toT = { x: MX, y: Math.max(0, invY - LG2 - hTop), w: MW, h: hTop };
     const col = (list) => { const wts = list.map(wt), U = wts.reduce((a, v) => a + v, 0), n = list.length, tot = uh * U + G * (n - 1);
       let y = c.align === "center" ? Math.max(0, Math.min(H - tot, inT.y + inT.h / 2 - tot / 2)) : 0;   // default: both columns start at the top
       return wts.map((w) => { const r = { y, h: uh * w, sm: w < 1.5 }; y += uh * w + G; return r; }); };
