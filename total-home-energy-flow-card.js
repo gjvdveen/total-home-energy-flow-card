@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.8.7";
+const THEF_VERSION = "1.8.9";
 
 const T = {
   en: { home_total: "Home total", produced: "produced", used: "used", imported: "imported", exp_short: "export", today_total: "Total today", home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -1152,7 +1152,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       // AC-out 2 at the top right (own branch from the right of the inverter); AC-out 1 fills both columns from the bottom up
       const o2s = outs.filter((x) => isOut(x, "out2")), o1s = outs.filter((x) => isOut(x, "out1"));
       o1s.sort((a, b) => (a.g.source || a.g.position === "top" ? 1 : 0) - (b.g.source || b.g.position === "top" ? 1 : 0));   // sources end up highest
-      const u = (x) => (x.ph && x.ph.length ? 1.7 : 1);
+      const u = (x) => (x.ph && x.ph.length ? 2 : 1);   // rows on the grid
       const L1 = [], R1 = []; let ul = sides.l.reduce((a, x) => a + u(x), 0), ur = o2s.reduce((a, x) => a + u(x), 0);
       for (const x of o1s) { if (c.split === false || ur <= ul) { R1.push(x); ur += u(x); } else { L1.push(x); ul += u(x); } }
       vicPos = { lTop: sides.l.slice(), rTop: o2s, lBot: L1, rBot: R1 };
@@ -1166,9 +1166,9 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const pc = c.price && c.price.entity && this._hass.states[c.price.entity], hPr = pc && c.price.show !== false && !this._eMode && !this._pBot ? 30 : 0, PG = hPr ? 10 : 0;
     // middle column; compact when the sides are short (few devices), so the card shrinks with them
     const needSides = Math.max(need(sides.l), need(sides.r)), cmp = needSides < 300;
-    const invPh = (inv.phases || []).map((id) => this._num(id)), hTop = topL.length ? (cmp ? 50 : 58) : 0, hInv = (cmp ? 60 : 74) - (inv.show_state === false ? 22 : 0) + (invPh.length && !this._eMode ? 40 : 0) + (inv.model ? 12 : 0) + (vic ? 30 : 0), hBat = b ? (cmp ? 88 : 112) : 0, LG2 = cmp ? 18 : LG;
-    const needMid = hPr + PG + hTop + hInv + hBat + (hTop ? LG2 : 0) + (hBat ? LG2 : 0) + (vic ? 40 : 0);
-    let topH = Math.round(Math.max(cmp ? 200 : 240, needSides, needMid));
+    const invPh = (inv.phases || []).map((id) => this._num(id)), hTop = topL.length ? (cmp ? 50 : 58) : 0, hInv = (cmp ? 60 : 74) - (inv.show_state === false ? 22 : 0) + (invPh.length && !this._eMode ? 40 : 0) + (inv.model ? 12 : 0) + (vic ? 30 : 0), hBat = b ? (cmp ? 88 : 112) + (b.model ? 16 : 0) : 0, LG2 = cmp ? 18 : LG;
+    const needMid = hPr + PG + hTop + hInv + hBat + (hTop ? LG2 : 0) + (hBat ? LG2 : 0) + (vic ? 20 : 0);
+    let topH = Math.round(Math.max(cmp ? 200 : 240, vicPos ? 0 : needSides, needMid));   // Victron layout: rows counted on the grid below
     // Victron layout: both columns on one row grid, so left and right tiles line up (a tile with phase bars takes two rows)
     const SP = UMIN + G, sl = (x) => (x.ph && x.ph.length ? 2 : 1);
     if (vicPos) { const ns = Math.max(...[[...vicPos.lTop, ...vicPos.lBot], [...vicPos.rTop, ...vicPos.rBot]].map((L) => L.reduce((a, x) => a + sl(x), 0)));
@@ -1198,7 +1198,8 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       if (vicPos) {   // top group from the top, AC-out 1 group from the bottom up
         const top = side === "l" ? vicPos.lTop : vicPos.rTop, bot = side === "l" ? vicPos.lBot : vicPos.rBot, m = new Map();
         let y = 0; for (const x of top) { const h = sl(x) * SP - G; m.set(x, { y, h, sm: sl(x) < 2 }); y += h + G; }
-        y = H + G; for (const x of bot) { const h = sl(x) * SP - G; y -= h + G; m.set(x, { y, h, sm: true }); }
+        if (vicPos.rTop.length) { y = H + G; for (const x of bot) { const h = sl(x) * SP - G; y -= h + G; m.set(x, { y, h, sm: true }); } }   // AC-out 2 at the top: AC-out 1 from the bottom up
+        else for (const x of bot.slice().reverse()) { const h = sl(x) * SP - G; m.set(x, { y, h, sm: true }); y += h + G; }   // no AC-out 2: everything from the top, no gaps
         pos = list.map((x) => m.get(x));
       }
       list.forEach((x, i) => {
@@ -1229,7 +1230,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
           ys.push(ty); busX = bxx; return;
         }
         if (vic && isOut(x, "out1")) {
-          const two = false, hy = inT.y + inT.h + (two ? 46 : 32), icx = W / 2 + (two ? 10 : 0);
+          const two = false, hy = Math.min(inT.y + inT.h + (two ? 46 : 32), H - 4), icx = W / 2 + (two ? 10 : 0);
           const vx = side === "l" ? CW + (two ? 5 : 11) : W - CW - (two ? 5 : 11), r6 = 5;
           const sgnY = hy > ty ? 1 : -1, sgnX = side === "l" ? 1 : -1;
           const d = `M${ex},${ty}H${vx - sgnX * r6}Q${vx},${ty} ${vx},${ty + sgnY * r6}V${hy - sgnY * r6}Q${vx},${hy} ${vx + sgnX * r6},${hy}H${icx}V${inT.y + inT.h}`;
