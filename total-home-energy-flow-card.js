@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.6.2";
+const THEF_VERSION = "1.7.0";
 
 const T = {
   en: { home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -1075,6 +1075,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     // tiles with position: top go above the inverter in the middle column
     // Victron layout: as soon as an item says ac: out1 / out2, everything is drawn by its AC connection
     const vic = [...groups.l, ...groups.r].some((x) => x.g.ac === "out1" || x.g.ac === "out2");
+    let vicPos = null;
     const isOut = (x, n) => vic && (x.g.ac === n || (n === "out1" && !x.g.ac && groups.r.includes(x)));
     const topL = vic ? [] : groups.l.filter((x) => x.g.position === "top").slice(0, 1);
     const sides = { l: groups.l.filter((x) => x.g.position !== "top").slice(0, 5), r: groups.r.filter((x) => x.g.position !== "top").slice(0, 5) };
@@ -1090,11 +1091,15 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       const all = [...groups.l, ...groups.r].filter((x) => x.g.type !== "meter" || groups.l.includes(x));
       sides.l = all.filter((x) => groups.l.includes(x) && !x.g.ac || x.g.ac === "in").slice(0, 6);
       const outs = [...all.filter((x) => isOut(x, "out1")), ...all.filter((x) => isOut(x, "out2"))].slice(0, 10);
-      sides.r = [];
-      // AC-out items are shared over both columns (sources like solar first, on the right), keeping the columns about equal
+      // AC-out 2 at the top right (own branch from the right of the inverter); AC-out 1 fills both columns from the bottom up
+      const o2s = outs.filter((x) => isOut(x, "out2")), o1s = outs.filter((x) => isOut(x, "out1"));
+      o1s.sort((a, b) => (a.g.source || a.g.position === "top" ? 1 : 0) - (b.g.source || b.g.position === "top" ? 1 : 0));   // sources end up highest
       const u = (x) => (x.ph && x.ph.length ? 1.7 : 1);
-      let ul = sides.l.reduce((a, x) => a + u(x), 0), ur = 0;
-      for (const x of outs) { if (c.split === false || ur <= ul || x.g.source || x.g.position === "top") { sides.r.push(x); ur += u(x); } else { sides.l.push(x); ul += u(x); } }
+      const L1 = [], R1 = []; let ul = sides.l.reduce((a, x) => a + u(x), 0), ur = o2s.reduce((a, x) => a + u(x), 0);
+      for (const x of o1s) { if (c.split === false || ur <= ul) { R1.push(x); ur += u(x); } else { L1.push(x); ul += u(x); } }
+      vicPos = { lTop: sides.l.slice(), rTop: o2s, lBot: L1, rBot: R1 };
+      sides.l = [...sides.l, ...L1.slice().reverse()];
+      sides.r = [...o2s, ...R1.slice().reverse()];
       devs.length = 0;
     }
     const wt = (x) => x.w ? x.w : x.g.size === "small" ? 1 : x.g.size === "large" ? 2 : x.ph.length ? 1.7 : 1;
@@ -1104,7 +1109,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     // middle column; compact when the sides are short (few devices), so the card shrinks with them
     const needSides = Math.max(need(sides.l), need(sides.r)), cmp = needSides < 300;
     const invPh = (inv.phases || []).map((id) => this._num(id)), hTop = topL.length ? (cmp ? 50 : 58) : 0, hInv = (cmp ? 60 : 74) + (invPh.length && !this._eMode ? 40 : 0), hBat = b ? (cmp ? 88 : 112) : 0, LG2 = cmp ? 18 : LG;
-    const needMid = hPr + PG + hTop + hInv + hBat + (hTop ? LG2 : 0) + (hBat ? LG2 : 0) + (vic ? 40 + (sides.r.concat(sides.l).some((x) => isOut(x, "out2")) ? 16 : 0) : 0);
+    const needMid = hPr + PG + hTop + hInv + hBat + (hTop ? LG2 : 0) + (hBat ? LG2 : 0) + (vic ? 40 : 0);
     const topH = Math.round(Math.max(cmp ? 200 : 240, needSides, needMid));
     const rows = Math.ceil(devs.length / 3), RH = UMIN, gridTop = topH + 30;
     const H = devs.length ? gridTop + rows * RH + (rows - 1) * 16 : topH;
@@ -1125,7 +1130,14 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       return `M${x1},${y1}H${mx - sx * r}Q${mx},${y1} ${mx},${y1 + sy * r}V${y2 - sy * r}Q${mx},${y2} ${mx + sx * r},${y2}H${x2}`; };
     const bus = []; let yo1 = [], yo2 = [], busL = null; const outBus = [];
     for (const side of ["l", "r"]) {
-      const list = sides[side], pos = col(list), ys = []; let net = 0, busX = 0;
+      const list = sides[side], ys = []; let net = 0, busX = 0;
+      let pos = col(list);
+      if (vicPos) {   // top group from the top, AC-out 1 group from the bottom up
+        const top = side === "l" ? vicPos.lTop : vicPos.rTop, bot = side === "l" ? vicPos.lBot : vicPos.rBot, m = new Map();
+        let y = 0; for (const x of top) { const h = (x.ph && x.ph.length ? 1.7 : 1) * UMIN; m.set(x, { y, h, sm: h < 1.5 * UMIN }); y += h + G; }
+        y = H; for (const x of bot) { const h = (x.ph && x.ph.length ? 1.7 : 1) * UMIN; y -= h; m.set(x, { y, h, sm: true }); y -= G; }
+        pos = list.map((x) => m.get(x));
+      }
       list.forEach((x, i) => {
         const g = x.g, p = pos[i], tx = side === "l" ? 0 : W - CW, color = g.color || ["#5ac8fa", "#ffcc00", "#bf5af2"][i];
         if (g.type === "meter") { const m = this._meter(g);
@@ -1153,8 +1165,8 @@ class TotalHomeEnergyRingCard extends HTMLElement {
           paths.push({ d, color: cc, on, rev: (x.tot || 0) < 0, pw: Math.abs(x.tot || 0) });
           ys.push(ty); busX = bxx; return;
         }
-        if (vic && (isOut(x, "out1") || isOut(x, "out2"))) {
-          const two = isOut(x, "out2"), hy = inT.y + inT.h + (two ? 46 : 32), icx = W / 2 + (two ? 10 : 0);
+        if (vic && isOut(x, "out1")) {
+          const two = false, hy = inT.y + inT.h + (two ? 46 : 32), icx = W / 2 + (two ? 10 : 0);
           const vx = side === "l" ? CW + (two ? 5 : 11) : W - CW - (two ? 5 : 11), r6 = 5;
           const sgnY = hy > ty ? 1 : -1, sgnX = side === "l" ? 1 : -1;
           const d = `M${ex},${ty}H${vx - sgnX * r6}Q${vx},${ty} ${vx},${ty + sgnY * r6}V${hy - sgnY * r6}Q${vx},${hy} ${vx + sgnX * r6},${hy}H${icx}V${inT.y + inT.h}`;
@@ -1164,8 +1176,8 @@ class TotalHomeEnergyRingCard extends HTMLElement {
           return;
         }
         const o2 = vic && side === "r" && g.ac === "out2";
-        if (o2) { bx = (inT.x + MW + ex) / 2 + 8; }
-        const iyy = o2 ? inT.y + inT.h * 0.82 : vic && side === "r" ? inT.y + inT.h * 0.35 : inT.y + inT.h / 2, ixx = side === "l" ? inT.x : inT.x + MW, sy = iyy > ty ? 1 : -1, sx = side === "l" ? 1 : -1, rr = Math.min(6, Math.abs(iyy - ty) / 2);
+        if (o2) { bx = (inT.x + MW + ex) / 2 - 7; }
+        const iyy = inT.y + inT.h / 2, ixx = side === "l" ? inT.x : inT.x + MW, sy = iyy > ty ? 1 : -1, sx = side === "l" ? 1 : -1, rr = Math.min(6, Math.abs(iyy - ty) / 2);
         if (vic) (o2 ? (yo2 = yo2.concat(ty, iyy)) : side === "r" ? (yo1 = yo1.concat(ty, iyy)) : null);
         // full route tile -> bus -> inverter, so the dots also run along the vertical bus
         const route = Math.abs(iyy - ty) < 1 ? `M${ex},${ty}H${ixx}` : `M${ex},${ty}H${bx - sx * rr}Q${bx},${ty} ${bx},${ty + sy * rr}V${iyy}H${ixx}`;
@@ -1176,6 +1188,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
         const hp = pos[0], hb = hp.y + hp.h - 14, bxx = W - CW - 9;
         bus.push(`M${W - CW},${hb}H${bxx}V${Math.max(...ys)}`);
       } else if (vic && side === "r") {
+        if (yo2.length) { const bx2 = (inT.x + MW + W - CW) / 2 - 7; bus.push(`M${bx2},${Math.min(...yo2)}V${Math.max(...yo2)}`); }
       } else if (list.length) {
         const iy = inT.y + inT.h / 2, ix = side === "l" ? inT.x : inT.x + MW;
         ys.push(iy); const y0 = Math.min(...ys), y1 = Math.max(...ys);
@@ -1245,7 +1258,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       const hy = ob[0].hy, icx = ob[0].icx, xs = ob.map((o) => o.vx).concat(icx);
       bus.push(`M${icx},${inT.y + inT.h}V${hy}`, `M${Math.min(...xs)},${hy}H${Math.max(...xs)}`);
       for (const sd of ["l", "r"]) { const o = ob.filter((q) => q.side === sd); if (o.length) bus.push(`M${o[0].vx},${Math.min(hy, ...o.map((q) => q.ty))}V${Math.max(hy, ...o.map((q) => q.ty))}`); }
-      if (two) yo2 = [1]; else yo1 = [1];
+      if (!two) yo1 = [1];
     }
     // Victron: ports as small pills on the inverter edges (clearer than loose text)
     this._el.ov.querySelectorAll(".port").forEach((e) => (e._seen = false));
@@ -1255,7 +1268,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     if (vic) { const L = c.labels || {};
       port("in", L.ac_in || "AC-in", inT.x, inT.y + inT.h / 2);
       if (yo1.length) port("o1", L.ac_out1 || "AC-out 1", W / 2, inT.y + inT.h);
-      if (yo2.length) port("o2", L.ac_out2 || "AC-out 2", W / 2 + 10, inT.y + inT.h + 46); }
+      if (yo2.length) port("o2", L.ac_out2 || "AC-out 2", inT.x + MW, inT.y + inT.h / 2); }
     this._el.ov.querySelectorAll(".port").forEach((e) => { if (!e._seen) e.remove(); });
     let lbl = "";
     if (false) { const t = (x, y, txt, anc) => `<text x="${x}" y="${y}" font-size="7.5" fill="currentColor" opacity=".55" text-anchor="${anc}" font-weight="600">${txt}</text>`;
