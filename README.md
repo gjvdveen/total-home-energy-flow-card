@@ -158,6 +158,7 @@ chart:
 | `kw_from` | `1000` | From this many watts values are shown in kW |
 | `rest` | – | `true` or `{name, icon, color, of, entity, energy}`: adds an *Other* tile = home total minus all listed consumers. `of` names the base item (default: first right item); or give `entity` (and optional `energy`) as the home total, then no home tile is needed |
 | `align` | `top` | `center` places the side columns around the inverter |
+| `battery_position` | `bottom` (`top` in the Victron layout) | Battery above or below the inverter in the schematic |
 | `branch` | `true` | Consumers on the right hang under the first right item (home). `false` connects every item to the inverter |
 
 ### Battery (`battery`)

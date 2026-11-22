@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.5.0";
+const THEF_VERSION = "1.5.1";
 
 const T = {
   en: { home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -1105,8 +1105,10 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const uh = Math.min(UMIN * 1.3, ...["l", "r"].filter((k) => sides[k].length).map((k) => (topH - G * (sides[k].length - 1)) / units(sides[k])));
     const paths = [];
     // middle column: [top] - inverter (centred) - battery
-    const invY = hPr + PG + (hTop ? hTop + LG2 : 0);   // middle column stacked from the top
-    const inT = { x: MX, y: invY, w: MW, h: hInv }, baT = { x: MX, y: invY + hInv + LG2, w: MW, h: hBat };
+    // battery above the inverter (Victron layout, or battery_position: top): the inverter sits lower, leaving room for the AC lines
+    const batTop = b && (c.battery_position ? c.battery_position === "top" : vic);
+    const invY = hPr + PG + (hTop ? hTop + LG2 : 0) + (batTop ? hBat + LG2 : 0);   // middle column stacked from the top
+    const inT = { x: MX, y: invY, w: MW, h: hInv }, baT = batTop ? { x: MX, y: hPr + PG + (hTop ? hTop + LG2 : 0), w: MW, h: hBat } : { x: MX, y: invY + hInv + LG2, w: MW, h: hBat };
     const toT = { x: MX, y: Math.max(0, invY - LG2 - hTop), w: MW, h: hTop };
     const col = (list) => { const wts = list.map(wt), U = wts.reduce((a, v) => a + v, 0), n = list.length, tot = uh * U + G * (n - 1);
       let y = c.align === "center" ? Math.max(0, Math.min(H - tot, inT.y + inT.h / 2 - tot / 2)) : 0;   // default: both columns start at the top
@@ -1171,7 +1173,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     }
     // current price chip at the top of the middle column
     if (hPr) {
-      const prY = (hTop ? toT.y : invY) - PG - hPr, v = parseFloat(pc.state), pcfg = c.price, loc = this._hass.language || "en";
+      const prY = batTop ? 0 : (hTop ? toT.y : invY) - PG - hPr, v = parseFloat(pc.state), pcfg = c.price, loc = this._hass.language || "en";
       const arr = (pcfg.attribute && pc.attributes[pcfg.attribute]) || (c.chart && c.chart.price && pc.attributes[c.chart.price.attribute || "prices"]) || [];
       const sk = pcfg.start_key || (c.chart && c.chart.price && c.chart.price.start_key) || "start", vk = pcfg.value_key || (c.chart && c.chart.price && c.chart.price.value_key) || "price";
       const day = new Date().toDateString(), pts = arr.map((x) => [Date.parse(x[sk]), +x[vk]]).filter((x) => !isNaN(x[0]) && !isNaN(x[1]));
@@ -1203,7 +1205,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       const t = this._tile("bat", { ...baT, color: bc, on: true, icon: b.icon || "mdi:home-battery", name: b.name || "Accu", value: soc == null ? "–" : `${Math.round(soc)}<span class="u">%\u2002${this._eMode ? "" : st}</span>`,
         sub: [l1, l2], cls: "bat", cfg: b });
       t.style.setProperty("--soc", (soc == null ? 0 : Math.max(0, Math.min(100, soc))) + "%");
-      const ch = (bp || 0) < -10, on = Math.abs(bp || 0) > 10, x0 = W / 2, y1 = inT.y + inT.h, y2 = baT.y;
+      const ch = (bp || 0) < -10, on = Math.abs(bp || 0) > 10, x0 = W / 2, y1 = batTop ? inT.y : inT.y + inT.h, y2 = batTop ? baT.y + baT.h : baT.y;
       paths.push({ d: ch ? `M${x0},${y1}V${y2}` : `M${x0},${y2}V${y1}`, color: bc, on });
     }
     if (devs.length) {
