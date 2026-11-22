@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.7.5";
+const THEF_VERSION = "1.7.6";
 
 const T = {
   en: { home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -13,7 +13,7 @@ const T = {
         charging: "laden", discharging: "ontladen", supplying: "levert", idle: "rust", off: "uit", rest: "Overig", unavailable: "niet beschikbaar", legend: "Legenda", charts: "Grafieken", gas: "Gas", water: "Water", today: "vandaag", price: "Prijs", consumption: "Verbruik", soc: "Accu", nodata: "Geen gegevens", ring: "Ring: waar de stroom van het huis vandaan komt", lines: "Dikte van de lijn = vermogen · bolletjes = richting", consumers: "Apparaten", devices_n: "apparaten", now: "nu", at: "om", today_tab: "Vandaag", now_tab: "Nu", price_legend: "Prijs (bij Net): bolletje groen = goedkoop · oranje = gemiddeld · rood = duur t.o.v. vandaag · pijltje = volgende prijs hoger of lager" },
 };
 
-const DEFAULT_COLORS = { solar: "#ffb300", grid: "#ff6b5e", grid_export: "#34c759", battery: "#34c759", home: "#5ac8fa", device: "#bf5af2", rest: "#8e8e93" };
+const DEFAULT_COLORS = { solar: "#ffb300", grid: "#ff6b5e", grid_export: "#00c7be", battery: "#34c759", home: "#5ac8fa", device: "#bf5af2", rest: "#8e8e93" };
 const DEFAULT_ICONS = { solar: "mdi:solar-power-variant", grid: "mdi:transmission-tower", battery: "mdi:home-battery", home: "mdi:home", device: "mdi:power-plug", rest: "mdi:dots-horizontal-circle-outline" };
 
 class TotalHomeEnergyFlowCard extends HTMLElement {
@@ -764,6 +764,9 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       .chead::before { content:"▸ "; } .charts.open .chead::before { content:"▾ "; }
       .charts:not(.open) .cbody { display:none; } .charts:not(.open) .chead { margin-bottom:0; }
       .tabs { display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap; justify-content:center; }
+      .cline { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; } .cline .chead { margin-bottom:0; } .charts:not(.open) .cline { margin-bottom:0; }
+      .pfoot { display:flex; align-items:center; gap:5px; font-size:12px; font-weight:500; opacity:.7; cursor:pointer; white-space:nowrap; font-variant-numeric: tabular-nums; }
+      .pfoot i { width:7px; height:7px; border-radius:50%; flex:0 0 auto; } .pfoot ha-icon { --mdc-icon-size:13px; } .pfoot .u { font-size:1em; }
       .tab { padding:5px 12px; border-radius:14px; font-size:12.5px; font-weight:600; background: rgba(127,127,127,.16); cursor:pointer; user-select:none; }
       .tab.sel { background: var(--primary-color, #03a9f4); color:#fff; }
       .chart { position:relative; height:140px; } .chart svg { position:static; width:100%; height:100%; display:block; overflow:visible; }
@@ -795,13 +798,14 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       <div class="stage"><svg viewBox="0 0 400 290"></svg><div class="mid"><div class="mh"><ha-icon></ha-icon><span></span></div><div class="soc"></div><div class="s"></div></div></div>
       <div class="ls"><div class="lring"><svg viewBox="0 0 200 200"></svg><div class="mid m2"><div class="mh"><ha-icon></ha-icon><span></span></div><div class="soc"></div><div class="s"></div></div></div><div class="rows"></div></div>
       <div class="ov"><svg viewBox="0 0 400 250"></svg></div>
-      <div class="charts" hidden><div class="chead"></div><div class="cbody"><div class="tabs"></div><div class="chart"></div></div></div></div>`;
+      <div class="charts" hidden><div class="cline"><div class="chead"></div><div class="pfoot" hidden></div></div><div class="cbody"><div class="tabs"></div><div class="chart"></div></div></div></div>`;
     this._el = { title: r.querySelector(".title"), stage: r.querySelector(".stage"), svg: r.querySelector(".stage svg"), mid: r.querySelector(".mid"),
       ov: r.querySelector(".ov"), ovsvg: r.querySelector(".ov svg"), pg: r.querySelector(".pg") };
     r.querySelectorAll(".pg span").forEach((sp) => sp.addEventListener("click", () => {
       this._page = sp.dataset.p; try { localStorage.setItem("thef-ring-page", this._page); } catch (_) {} this._sig = null; this._render(); }));
     this._el.ls = r.querySelector(".ls"); this._el.lsvg = r.querySelector(".lring svg"); this._el.mid2 = r.querySelector(".m2"); this._el.rows = r.querySelector(".rows");
-    Object.assign(this._el, { charts: r.querySelector(".charts"), tabs: r.querySelector(".tabs"), chart: r.querySelector(".chart") });
+    Object.assign(this._el, { charts: r.querySelector(".charts"), tabs: r.querySelector(".tabs"), chart: r.querySelector(".chart"), pfoot: r.querySelector(".pfoot") });
+    this._el.pfoot.addEventListener("click", () => this._open({ entity: this._config.price.entity }));
     this._el.charts.querySelector(".chead").addEventListener("click", () => {
       this._chOpen = !this._chOpen; try { localStorage.setItem("thef-ring-charts-open", this._chOpen ? "1" : "0"); } catch (_) {}
       this._el.charts.classList.toggle("open", this._chOpen); if (this._chOpen) this._renderChart(true); });
@@ -829,6 +833,17 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       pts.push(`${(cx + side * r * Math.cos(a)).toFixed(1)},${(cy - r * Math.sin(a)).toFixed(1)}`); }
     return "M" + pts.join("L");
   }
+  _priceHtml(pc) {
+    const c = this._config, v = parseFloat(pc.state), pcfg = c.price, loc = this._hass.language || "en";
+
+      const arr = (pcfg.attribute && pc.attributes[pcfg.attribute]) || (c.chart && c.chart.price && pc.attributes[c.chart.price.attribute || "prices"]) || [];
+      const sk = pcfg.start_key || (c.chart && c.chart.price && c.chart.price.start_key) || "start", vk = pcfg.value_key || (c.chart && c.chart.price && c.chart.price.value_key) || "price";
+      const day = new Date().toDateString(), pts = arr.map((x) => [Date.parse(x[sk]), +x[vk]]).filter((x) => !isNaN(x[0]) && !isNaN(x[1]));
+      const today = pts.filter((x) => new Date(x[0]).toDateString() === day).map((x) => x[1]);
+      const lo = today.length ? Math.min(...today) : v, hi = today.length ? Math.max(...today) : v, f = hi > lo ? (v - lo) / (hi - lo) : 0.5;
+      const nxt = pts.find((x) => x[0] > Date.now()), tr = nxt ? (nxt[1] > v + 0.005 ? "mdi:arrow-top-right" : nxt[1] < v - 0.005 ? "mdi:arrow-bottom-right" : "mdi:arrow-right") : "";
+    return `<i style="background:hsl(${(120 - 120 * f).toFixed(0)},62%,50%)"></i><span>${pcfg.prefix != null ? pcfg.prefix : "€ "}${isNaN(v) ? pc.state : v.toLocaleString(loc, { minimumFractionDigits: pcfg.decimals != null ? pcfg.decimals : 3, maximumFractionDigits: pcfg.decimals != null ? pcfg.decimals : 3 })}<span class="u"> /kWh</span></span>${tr ? `<ha-icon icon="${tr}"></ha-icon>` : ""}`;
+  }
   _render() {
     if (!this._hass || !this._config || !this._el) return;
     this._renderChart(false);
@@ -855,6 +870,10 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     if (c.title_color) this._el.title.style.setProperty("--thef-title", c.title_color);
     this._el.pg.querySelectorAll("span").forEach((sp) => { sp.title = pt[sp.dataset.p] || sp.dataset.p; });
     this._el.stage.hidden = this._page !== "ring"; this._el.ov.hidden = !["overview", "today"].includes(this._page); this._el.ls.hidden = this._page !== "list";
+    // price next to "Charts" (bottom right) unless price.position: top or there are no charts
+    const pcs = c.price && c.price.entity && this._hass.states[c.price.entity];
+    this._pBot = !!(pcs && c.price.show !== false && c.price.position !== "top" && this._chartTabs().length);
+    this._el.pfoot.hidden = !this._pBot; if (this._pBot) this._el.pfoot.innerHTML = this._priceHtml(pcs);
     if (this._page === "overview") { this._eMode = false; this._el.ov.classList.remove("static"); this._renderOv(groups, soc, bp); return; }
     if (this._page === "today") { this._renderToday(groups, soc); return; }
     if (this._page === "list") { this._renderList(groups, soc, bp); return; }
@@ -1106,7 +1125,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const wt = (x) => x.w ? x.w : x.g.size === "small" ? 1 : x.g.size === "large" ? 2 : x.ph.length ? 1.7 : 1;
     const units = (L) => L.reduce((a, x) => a + wt(x), 0);
     const need = (L) => L.length ? units(L) * UMIN + G * (L.length - 1) : 0;
-    const pc = c.price && c.price.entity && this._hass.states[c.price.entity], hPr = pc && c.price.show !== false && !this._eMode ? 30 : 0, PG = hPr ? 10 : 0;
+    const pc = c.price && c.price.entity && this._hass.states[c.price.entity], hPr = pc && c.price.show !== false && !this._eMode && !this._pBot ? 30 : 0, PG = hPr ? 10 : 0;
     // middle column; compact when the sides are short (few devices), so the card shrinks with them
     const needSides = Math.max(need(sides.l), need(sides.r)), cmp = needSides < 300;
     const invPh = (inv.phases || []).map((id) => this._num(id)), hTop = topL.length ? (cmp ? 50 : 58) : 0, hInv = (cmp ? 60 : 74) - (inv.show_state === false ? 22 : 0) + (invPh.length && !this._eMode ? 40 : 0) + (inv.model ? 12 : 0) + (vic ? 20 : 0), hBat = b ? (cmp ? 88 : 112) : 0, LG2 = cmp ? 18 : LG;
@@ -1203,17 +1222,11 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     }
     // current price chip at the top of the middle column
     if (hPr) {
-      const prY = batTop ? 0 : (hTop ? toT.y : invY) - PG - hPr, v = parseFloat(pc.state), pcfg = c.price, loc = this._hass.language || "en";
-      const arr = (pcfg.attribute && pc.attributes[pcfg.attribute]) || (c.chart && c.chart.price && pc.attributes[c.chart.price.attribute || "prices"]) || [];
-      const sk = pcfg.start_key || (c.chart && c.chart.price && c.chart.price.start_key) || "start", vk = pcfg.value_key || (c.chart && c.chart.price && c.chart.price.value_key) || "price";
-      const day = new Date().toDateString(), pts = arr.map((x) => [Date.parse(x[sk]), +x[vk]]).filter((x) => !isNaN(x[0]) && !isNaN(x[1]));
-      const today = pts.filter((x) => new Date(x[0]).toDateString() === day).map((x) => x[1]);
-      const lo = today.length ? Math.min(...today) : v, hi = today.length ? Math.max(...today) : v, f = hi > lo ? (v - lo) / (hi - lo) : 0.5;
-      const nxt = pts.find((x) => x[0] > Date.now()), tr = nxt ? (nxt[1] > v + 0.005 ? "mdi:arrow-top-right" : nxt[1] < v - 0.005 ? "mdi:arrow-bottom-right" : "mdi:arrow-right") : "";
+      const prY = batTop ? 0 : (hTop ? toT.y : invY) - PG - hPr;
       let el = this._el.ov.querySelector(".prc");
       if (!el) { el = document.createElement("div"); el.className = "prc"; el.addEventListener("click", () => this._open({ entity: this._config.price.entity })); this._el.ov.appendChild(el); }
       const HH = this._ovH || 250; Object.assign(el.style, { left: MX / 4 + "%", width: MW / 4 + "%", top: Math.max(0, prY) / HH * 100 + "%", height: hPr / HH * 100 + "%" });
-      el.innerHTML = `<i style="background:hsl(${(120 - 120 * f).toFixed(0)},62%,50%)"></i><span>${pcfg.prefix != null ? pcfg.prefix : "€ "}${isNaN(v) ? pc.state : v.toLocaleString(loc, { minimumFractionDigits: pcfg.decimals != null ? pcfg.decimals : 3, maximumFractionDigits: pcfg.decimals != null ? pcfg.decimals : 3 })}<span class="u"> /kWh</span></span>${tr ? `<ha-icon icon="${tr}"></ha-icon>` : ""}`;
+      el.innerHTML = this._priceHtml(pc);
     } else { const el = this._el.ov.querySelector(".prc"); if (el) el.remove(); }
     for (const x of topL) {
       const g = x.g, color = g.color || "#ffcc00", exp = g.export_color && (x.tot || 0) < 0, cc = exp ? g.export_color : color, on = Math.abs(x.tot || 0) > minP;

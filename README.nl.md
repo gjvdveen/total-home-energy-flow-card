@@ -53,7 +53,7 @@ left:
   - name: Net
     icon: mdi:transmission-tower
     entity: sensor.net_vermogen       # + = afname, – = teruglevering
-    export_color: "#34c759"
+    export_color: "#00c7be"
   - name: Solar
     icon: mdi:solar-power-variant
     entity: sensor.solar_vermogen

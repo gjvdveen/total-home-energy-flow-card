@@ -54,7 +54,7 @@ left:
   - name: Grid
     icon: mdi:transmission-tower
     entity: sensor.grid_power         # + = import, – = export
-    export_color: "#34c759"
+    export_color: "#00c7be"
   - name: Solar
     icon: mdi:solar-power-variant
     entity: sensor.solar_power
@@ -95,7 +95,7 @@ left:
   - name: Grid
     icon: mdi:transmission-tower
     color: "#ff6b5e"
-    export_color: "#34c759"
+    export_color: "#00c7be"
     entity: sensor.grid_power
     phases:
       - sensor.grid_power_l1
@@ -211,6 +211,8 @@ chart:
 | `attribute`, `start_key`, `value_key` | Where the list of upcoming prices lives (for the colour dot and the trend arrow). If omitted, the settings of `chart.price` are used |
 | `decimals` | Default `3` |
 | `prefix` | Default `€ ` |
+| `position` | `bottom` (default): small, bottom right next to *Charts*, on every view. `top`: as a pill above the middle column of the schematic (also used when there are no charts) |
+| `show` | `false` hides the price |
 
 ### Charts (`chart`)
 

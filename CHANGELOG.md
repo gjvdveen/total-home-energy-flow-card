@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.2.0 (unreleased)
+- **Price next to the charts**: the current price now sits small at the bottom right, on the same line as *Charts*, on every view. This frees up room in the schematic. `price.position: top` keeps the old pill.
+- Grid export colour changed to mint (`#00c7be`) so it no longer looks the same as the battery.
 - **Victron layout**: tell each item where it is connected with `ac: in`, `ac: out1` or `ac: out2`. The schematic then draws the grid and AC-in devices on the left, and AC-out 1 and AC-out 2 as separate branches on the right of the inverter, each with a small label. Sources on AC-out (like a PV inverter) use `source: true`. Labels can be renamed with `labels: {ac_in, ac_out1, ac_out2}`. In this layout the battery sits above the inverter (`battery_position: top|bottom` to choose) AC-out 1 leaves the bottom of the inverter and its devices fill both columns from the bottom up (`split: false` keeps them on the right); AC-out 2 gets its own branch from the right of the inverter with its devices at the top right. The connections are shown as labelled ports on the inverter, placed so they never cover the model text or phase bars.
 - **Before or after the inverter**: give a device `ac: in` when it sits on the grid side (e.g. an EV charger before a Victron inverter). It then hangs on the grid line, under the grid tile, and is not subtracted from *Other*.
 - **Other without a home tile**: `rest: {name, entity}` uses its own total sensor (e.g. the whole-home consumption), so you can drop the home tile and show e.g. *Home other* next to your devices.
