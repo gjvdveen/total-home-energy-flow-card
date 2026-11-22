@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.8.0";
+const THEF_VERSION = "1.8.1";
 
 const T = {
   en: { produced: "produced", used: "used", imported: "imported", exp_short: "export", today_total: "Total today", home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -734,6 +734,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       .tile.on { border-color: var(--c); } .tile:not(.on) { opacity:.6; }
       .tile .th { display:flex; align-items:center; gap:4px; font-size: clamp(10px, 2.9cqw, 13px); opacity:.8; white-space:nowrap; overflow:hidden; }
       .tile .th ha-icon { --mdc-icon-size: clamp(12px, 3.4cqw, 16px); color: var(--c); flex:0 0 auto; }
+      .tile ha-icon.ar { --mdc-icon-size:.8em; opacity:.6; margin-right:3px; vertical-align:-.05em; } .tile .ts ha-icon.ar { --mdc-icon-size:1em; margin-right:2px; }
       .tile .tv { font-size: clamp(14px, 4.6cqw, 24px); font-weight:600; font-variant-numeric: tabular-nums; white-space:nowrap; line-height:1.2; overflow:hidden; text-overflow:ellipsis; }
       .tile .tv.txt { font-size: clamp(12px, 3.6cqw, 18px); white-space:normal; line-height:1.15; }
       .tile.inv .tv.txt { font-size: clamp(11px, 3.1cqw, 15px); font-weight:600; margin:auto 0; padding-bottom:4px; align-self:stretch; text-align:center; text-wrap:balance; }
@@ -1014,11 +1015,11 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       if (g.type === "meter") return { ...x };
       if (g.energy_import || g.energy_export) {
         const i = st(g.energy_import) || 0, e = st(g.energy_export) || 0;
-        return { ...x, tot: i, ph: [], w: 1.5, sub: this._t("imported") + (e > 0 ? " · " + (g.export_short || this._t("exp_short")) + " " + this._fmtHtml(e) : ""), imp: i, exp: e };
+        return { ...x, tot: i, ph: [], w: 1.5, src: true, sub: e > 0 ? `<ha-icon class="ar" icon="mdi:arrow-left"></ha-icon>` + this._fmtHtml(e) : "", imp: i, exp: e };
       }
       // say what the kWh is: produced by a source (solar), used by a consumer
       const isSrc = g.source || g.position === "top" || (groups.l.includes(x) && !g.load && g.ac !== "in");
-      return { ...x, tot: g._rest ? null : (g.energy ? st(g.energy) : null), ph: [], w: 1, sub: this._t(isSrc ? "produced" : "used") };
+      return { ...x, tot: g._rest ? null : (g.energy ? st(g.energy) : null), ph: [], w: 1, src: !!isSrc };
     };
     this._eMode = true;
     const tgs = { l: groups.l.map(tg), r: groups.r.map(tg) };
@@ -1198,7 +1199,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
           return; }
         const exp = g.export_color && (x.tot || 0) < 0, cc = exp ? g.export_color : color, on = Math.abs(x.tot || 0) > thr(g);
         const sub = g.export_color ? ((x.tot || 0) < -thr(g) ? (g.export_name || "teruglevering") : (x.tot || 0) > thr(g) ? (g.import_name || "afname") : "") : "";
-        this._tile(side + i, { x: tx, y: p.y, w: CW, h: p.h, color: cc, on, icon: g.icon || "mdi:flash", name: g.name, value: this._fmtHtml(x.tot), phases: x.ph.length ? x.ph : null, sub: x.sub != null ? x.sub : !x.ph.length && sub && !p.sm ? sub : "", cls: p.sm ? "sm" : "", cfg: g });
+        this._tile(side + i, { x: tx, y: p.y, w: CW, h: p.h, color: cc, on, icon: g.icon || "mdi:flash", name: g.name, value: (x.src != null ? `<ha-icon class="ar" icon="mdi:arrow-${(side === "l") === x.src ? "right" : "left"}"></ha-icon>` : "") + this._fmtHtml(x.tot), phases: x.ph.length ? x.ph : null, sub: x.sub != null ? x.sub : !x.ph.length && sub && !p.sm ? sub : "", cls: p.sm ? "sm" : "", cfg: g });
         const br = false;   // (old in-column home branch, replaced by the grid below)
         let ty = br && i === 0 ? p.y + Math.min(28, p.h / 3) : p.y + p.h / 2, ex = side === "l" ? tx + CW : tx, bx = side === "l" ? (ex + inT.x) / 2 + (vic ? 7 : 0) : br ? inT.x + MW + (ex - inT.x - MW) * 0.35 : (inT.x + MW + ex) / 2;
         // branch from the bus to the tile; sources flow towards the bus when positive, loads away from it
