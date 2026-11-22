@@ -2,6 +2,7 @@
 
 ## 1.2.0 (unreleased)
 - **Before or after the inverter**: give a device `ac: in` when it sits on the grid side (e.g. an EV charger before a Victron inverter). It then hangs on the grid line, under the grid tile, and is not subtracted from *Other*.
+- **Other without a home tile**: `rest: {name, entity}` uses its own total sensor (e.g. the whole-home consumption), so you can drop the home tile and show e.g. *Home other* next to your devices.
 - **Inverter phases**: `inverter.phases` shows per-phase bars (e.g. AC-out L1–L3) in the inverter tile.
 - **Home branch**: in the schematic the first right tile (home) hangs on the inverter; all other consumers (plus *Other*) are shown in a grid underneath, fed from home, so it's clear they are part of the home total (up to 9). Turn off with `branch: false`.
 - Middle column (price, solar, inverter, battery) is stacked from the top instead of stretched.

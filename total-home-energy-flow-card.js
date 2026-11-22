@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.4.0";
+const THEF_VERSION = "1.4.1";
 
 const T = {
   en: { home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -686,7 +686,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     c.right = Array.isArray(c.right) ? c.right.slice(0, 8) : [];   // per page the visible number is limited later
     // rest: { name, icon, color, of } – "everything else": the home total minus all listed consumers
     if (c.rest) { const r = c.rest === true ? {} : c.rest;
-      c.right = c.right.filter((g) => !g._rest).concat([{ name: r.name || "Overig", icon: r.icon || "mdi:dots-horizontal-circle-outline", color: r.color || "#8e8e93", of: r.of, _rest: true, max: r.max }]); }
+      c.right = c.right.filter((g) => !g._rest).concat([{ name: r.name || "Overig", icon: r.icon || "mdi:dots-horizontal-circle-outline", color: r.color || "#8e8e93", of: r.of, entity: r.entity, energy: r.energy, _rest: true, max: r.max }]); }
     c.battery = c.battery || null;
     c.max_power = Number(c.max_power) > 0 ? Number(c.max_power) : 10000;
     c.kw_from = Number(c.kw_from) > 0 ? Number(c.kw_from) : 1000;
@@ -831,11 +831,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const c = this._config, b = c.battery;
     const groups = { l: c.left.map((g) => ({ g, ...this._group(g) })), r: c.right.map((g) => ({ g, ...this._group(g) })) };
     const rest = groups.r.find((x) => x.g._rest);
-    if (rest) {   // base = the group named in rest.of, else the first right-hand group (home)
-      const base = groups.r.find((x) => !x.g._rest && (rest.g.of ? x.g.name === rest.g.of : true));
-      const loads = [...groups.r.filter((x) => x !== base && x !== rest), ...groups.l.filter((x) => x.g.load)].filter((x) => x.g.type !== "meter" && x.g.in_rest !== false && (x.g.ac !== "in" || x.g.in_rest === true));
-      rest.tot = base && base.tot != null ? Math.max(0, base.tot - loads.reduce((a, x) => a + Math.max(0, x.tot || 0), 0)) : null;
-    }
+    if (rest) this._restCalc(groups, rest, rest.g.entity ? this._num(rest.g.entity) : undefined);
     let soc = null, bp = null;
     if (b) { soc = this._num(b.soc);
       if (b.entity) bp = this._num(b.entity) * (b.invert ? -1 : 1);
@@ -956,6 +952,13 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     if (Array.isArray(c.show) && c.show.length) return c.show.map((n) => all.find((x) => x.g.name === n)).filter(Boolean);
     return [...groups.l.filter((x) => x.g.type !== "meter" && !x.g.load).slice(0, 3), ...groups.r.filter((x) => x.g.type !== "meter").slice(0, 1)];
   }
+  _restCalc(gs, rest, baseTot) {   // rest = home total minus all listed consumers; baseTot given = hidden home total (rest.entity)
+    const base = baseTot !== undefined ? null : gs.r.find((x) => !x.g._rest && (rest.g.of ? x.g.name === rest.g.of : true));
+    const tot = baseTot !== undefined ? baseTot : base ? base.tot : null;
+    const loads = [...gs.r.filter((x) => x !== base && x !== rest), ...gs.l.filter((x) => x.g.load || x.g.ac === "in")]
+      .filter((x) => x.g.type !== "meter" && x.g.in_rest !== false && (x.g.ac !== "in" || x.g.in_rest === true));
+    rest.tot = tot != null ? Math.max(0, tot - loads.reduce((a, x) => a + Math.max(0, x.tot || 0), 0)) : null;
+  }
   _renderToday(groups, soc) {   // same schematic, but kWh since midnight (from the long-term statistics)
     const c = this._config, st = (id) => (id ? this._stat(id) : null), b = c.battery || {};
     const tg = (x) => {
@@ -970,24 +973,15 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     this._eMode = true;
     const tgs = { l: groups.l.map(tg), r: groups.r.map(tg) };
     const rest = tgs.r.find((x) => x.g._rest);
-    if (rest) {
-      const base = tgs.r.find((x) => !x.g._rest && (rest.g.of ? x.g.name === rest.g.of : true));
-      const loads = [...tgs.r.filter((x) => x !== base && x !== rest), ...tgs.l.filter((x) => x.g.load)].filter((x) => x.g.type !== "meter" && x.g.in_rest !== false && (x.g.ac !== "in" || x.g.in_rest === true));
-      rest.tot = base && base.tot != null ? Math.max(0, base.tot - loads.reduce((a, x) => a + Math.max(0, x.tot || 0), 0)) : null;
-    }
+
     const ch = st(b.energy_charge), di = st(b.energy_discharge);
     this._bE = ch != null || di != null ? { c: ch || 0, d: di || 0 } : null;
     // home without its own kWh meter: energy balance = grid import − export + other sources + battery discharge − charge
-    const home = tgs.r.find((x) => !x.g._rest);
-    if (home && home.tot == null && !home.g.energy) {
-      const grid = tgs.l.find((x) => x.imp != null), srcs = tgs.l.filter((x) => x !== grid && !x.g.load && x.g.type !== "meter");
-      if (grid) home.tot = grid.imp - grid.exp + srcs.reduce((a, x) => a + (x.tot || 0), 0) + (this._bE ? this._bE.d - this._bE.c : 0);
-    }
-    if (rest) {
-      const base = tgs.r.find((x) => !x.g._rest && (rest.g.of ? x.g.name === rest.g.of : true));
-      const loads = [...tgs.r.filter((x) => x !== base && x !== rest), ...tgs.l.filter((x) => x.g.load)].filter((x) => x.g.type !== "meter" && x.g.in_rest !== false && (x.g.ac !== "in" || x.g.in_rest === true));
-      rest.tot = base && base.tot != null ? Math.max(0, base.tot - loads.reduce((a, x) => a + Math.max(0, x.tot || 0), 0)) : null;
-    }
+    const grid = tgs.l.find((x) => x.imp != null), srcs = tgs.l.filter((x) => x !== grid && !x.g.load && x.g.ac !== "in" && x.g.type !== "meter");
+    const bal = grid ? grid.imp - grid.exp + srcs.reduce((a, x) => a + (x.tot || 0), 0) + (this._bE ? this._bE.d - this._bE.c : 0) : null;
+    const home = rest && rest.g.entity ? null : tgs.r.find((x) => !x.g._rest);
+    if (home && home.tot == null && !home.g.energy) home.tot = bal;
+    if (rest) this._restCalc(tgs, rest, rest.g.entity ? (rest.g.energy ? st(rest.g.energy) : bal) : undefined);
     this._el.ov.classList.add("static");
     this._renderOv(tgs, soc, this._bE ? this._bE.d - this._bE.c : null);
     this._eMode = false;
@@ -1083,7 +1077,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const isIn = (x) => x.g.ac === "in";
     const acIn = [...groups.r.filter(isIn), ...groups.l.filter((x) => isIn(x) && x.g.position !== "top")];
     sides.l = groups.l.filter((x) => x.g.position !== "top" && !isIn(x)).concat(groups.r.filter(isIn)).slice(0, 5);
-    const allR = groups.r.filter((x) => x.g.position !== "top" && !isIn(x)), br = c.branch !== false && allR.length > 1;
+    const allR = groups.r.filter((x) => x.g.position !== "top" && !isIn(x)), br = c.branch !== false && !(c.rest && c.rest.entity) && allR.length > 1;
     const devs = br ? allR.slice(1, 10) : [];
     if (br) sides.r = allR.slice(0, 1); else sides.r = allR.slice(0, 5);
     const wt = (x) => x.w ? x.w : x.g.size === "small" ? 1 : x.g.size === "large" ? 2 : x.ph.length ? 1.7 : 1;
@@ -1122,7 +1116,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
         const exp = g.export_color && (x.tot || 0) < 0, cc = exp ? g.export_color : color, on = Math.abs(x.tot || 0) > minP;
         const sub = g.export_color ? ((x.tot || 0) < -minP ? (g.export_name || "teruglevering") : (x.tot || 0) > minP ? (g.import_name || "afname") : "") : "";
         this._tile(side + i, { x: tx, y: p.y, w: CW, h: p.h, color: cc, on, icon: g.icon || "mdi:flash", name: g.name, value: this._fmtHtml(x.tot), phases: x.ph.length ? x.ph : null, sub: x.sub != null ? x.sub : !x.ph.length && sub && !p.sm ? sub : "", cls: p.sm ? "sm" : "", cfg: g });
-        const br = side === "r" && c.branch !== false && list.length > 1;
+        const br = false;   // (old in-column home branch, replaced by the grid below)
         const ty = br && i === 0 ? p.y + Math.min(28, p.h / 3) : p.y + p.h / 2, ex = side === "l" ? tx + CW : tx, bx = side === "l" ? (ex + inT.x) / 2 : br ? inT.x + MW + (ex - inT.x - MW) * 0.35 : (inT.x + MW + ex) / 2;
         // branch from the bus to the tile; sources flow towards the bus when positive, loads away from it
         const src = side === "l" && !g.load && !isIn(x);   // left tiles are sources unless marked load: true / ac: in
@@ -1134,7 +1128,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
         }
         const toBus = src ? (x.tot || 0) >= 0 : (x.tot || 0) < 0;
         // home branch: the first right tile (home) hangs on the inverter, all other right tiles hang under home
-        if (side === "r" && c.branch !== false && list.length > 1 && i > 0) {
+        if (false) {
           const hp = pos[0], hb = hp.y + hp.h - 14, bxx = tx - 9, rr2 = Math.min(6, Math.abs(ty - hb) / 2);
           const d = `M${tx},${hb}H${bxx + rr2}Q${bxx},${hb} ${bxx},${hb + rr2}V${ty - rr2}Q${bxx},${ty} ${bxx + rr2},${ty}H${tx}`;
           paths.push({ d, color: cc, on, rev: (x.tot || 0) < 0, pw: Math.abs(x.tot || 0) });
@@ -1146,7 +1140,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
         paths.push({ d: route, color: cc, on, rev: !toBus, pw: Math.abs(x.tot || 0) });
         ys.push(ty); net += side === "l" ? (x.tot || 0) : -(x.tot || 0); busX = bx;
       });
-      if (side === "r" && c.branch !== false && list.length > 1) {
+      if (false) {
         const hp = pos[0], hb = hp.y + hp.h - 14, bxx = W - CW - 9;
         bus.push(`M${W - CW},${hb}H${bxx}V${Math.max(...ys)}`);
       } else if (list.length) {

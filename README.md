@@ -156,7 +156,7 @@ chart:
 | `show` | left items + first right item | Names of the items on the ring and list views, e.g. `[Solar, Grid, Home]` |
 | `max_power` | `10000` | Default full scale (W) of an arc or bar |
 | `kw_from` | `1000` | From this many watts values are shown in kW |
-| `rest` | – | `true` or `{name, icon, color, of}`: adds an *Other* tile = home total minus all listed consumers. `of` names the base item (default: first right item) |
+| `rest` | – | `true` or `{name, icon, color, of, entity, energy}`: adds an *Other* tile = home total minus all listed consumers. `of` names the base item (default: first right item); or give `entity` (and optional `energy`) as the home total, then no home tile is needed |
 | `align` | `top` | `center` places the side columns around the inverter |
 | `branch` | `true` | Consumers on the right hang under the first right item (home). `false` connects every item to the inverter |
 
