@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.7.1";
+const THEF_VERSION = "1.7.3";
 
 const T = {
   en: { home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -737,7 +737,8 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       .tile .tv { font-size: clamp(14px, 4.6cqw, 24px); font-weight:600; font-variant-numeric: tabular-nums; white-space:nowrap; line-height:1.2; overflow:hidden; text-overflow:ellipsis; }
       .tile .tv.txt { font-size: clamp(12px, 3.6cqw, 18px); white-space:normal; line-height:1.15; }
       .tile.inv .tv.txt { font-size: clamp(11px, 3.1cqw, 15px); font-weight:600; margin:auto 0; padding-bottom:4px; align-self:stretch; text-align:center; text-wrap:balance; }
-      .tile.inv .th { justify-content:center; } .tile.inv.ph .tv.txt { margin:4px 0 0; } .tile.inv .pb { text-align:left; }
+      .tile.inv .th { justify-content:center; } .tile .model { font-size: clamp(9px, 2.4cqw, 11px); opacity:.6; text-align:center; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .tile .th img.logo { height: clamp(10px, 3cqw, 15px); max-width:60%; object-fit:contain; } .tile.inv.ph .tv.txt { margin:4px 0 0; } .tile.inv .pb { text-align:left; }
       .tile .tp { display:grid; grid-template-columns:auto 1fr; column-gap:6px; font-size: clamp(9.5px, 2.6cqw, 12px); opacity:.7; font-variant-numeric: tabular-nums; margin-top:auto; line-height:1.25; }
       .tile .tp b { font-weight:400; text-align:right; white-space:nowrap; }
       .tile.sm { padding:3px 8px; justify-content:center; gap:0; } .tile.sm .tv { font-size: clamp(13px, 4cqw, 20px); line-height:1.1; } .tile.sm .th { font-size: clamp(9.5px, 2.6cqw, 12px); }
@@ -1108,7 +1109,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const pc = c.price && c.price.entity && this._hass.states[c.price.entity], hPr = pc && c.price.show !== false && !this._eMode ? 30 : 0, PG = hPr ? 10 : 0;
     // middle column; compact when the sides are short (few devices), so the card shrinks with them
     const needSides = Math.max(need(sides.l), need(sides.r)), cmp = needSides < 300;
-    const invPh = (inv.phases || []).map((id) => this._num(id)), hTop = topL.length ? (cmp ? 50 : 58) : 0, hInv = (cmp ? 60 : 74) + (invPh.length && !this._eMode ? 40 : 0), hBat = b ? (cmp ? 88 : 112) : 0, LG2 = cmp ? 18 : LG;
+    const invPh = (inv.phases || []).map((id) => this._num(id)), hTop = topL.length ? (cmp ? 50 : 58) : 0, hInv = (cmp ? 60 : 74) + (invPh.length && !this._eMode ? 40 : 0) + (inv.model ? 12 : 0), hBat = b ? (cmp ? 88 : 112) : 0, LG2 = cmp ? 18 : LG;
     const needMid = hPr + PG + hTop + hInv + hBat + (hTop ? LG2 : 0) + (hBat ? LG2 : 0) + (vic ? 40 : 0);
     const topH = Math.round(Math.max(cmp ? 200 : 240, needSides, needMid));
     const rows = Math.ceil(devs.length / 3), RH = UMIN, gridTop = topH + 30;
@@ -1177,7 +1178,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
         }
         const o2 = vic && side === "r" && g.ac === "out2";
         if (o2) { bx = (inT.x + MW + ex) / 2 - 7; }
-        const iyy = inT.y + inT.h / 2, ixx = side === "l" ? inT.x : inT.x + MW, sy = iyy > ty ? 1 : -1, sx = side === "l" ? 1 : -1, rr = Math.min(6, Math.abs(iyy - ty) / 2);
+        const iyy = vic ? inT.y + 30 : inT.y + inT.h / 2, ixx = side === "l" ? inT.x : inT.x + MW, sy = iyy > ty ? 1 : -1, sx = side === "l" ? 1 : -1, rr = Math.min(6, Math.abs(iyy - ty) / 2);
         if (vic) (o2 ? (yo2 = yo2.concat(ty, iyy)) : side === "r" ? (yo1 = yo1.concat(ty, iyy)) : null);
         // full route tile -> bus -> inverter, so the dots also run along the vertical bus
         const route = Math.abs(iyy - ty) < 1 ? `M${ex},${ty}H${ixx}` : `M${ex},${ty}H${bx - sx * rr}Q${bx},${ty} ${bx},${ty + sy * rr}V${iyy}H${ixx}`;
@@ -1190,7 +1191,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       } else if (vic && side === "r") {
         if (yo2.length) { const bx2 = (inT.x + MW + W - CW) / 2 - 7; bus.push(`M${bx2},${Math.min(...yo2)}V${Math.max(...yo2)}`); }
       } else if (list.length) {
-        const iy = inT.y + inT.h / 2, ix = side === "l" ? inT.x : inT.x + MW;
+        const iy = vic ? inT.y + 30 : inT.y + inT.h / 2, ix = side === "l" ? inT.x : inT.x + MW;
         ys.push(iy); const y0 = Math.min(...ys), y1 = Math.max(...ys);
         bus.push(`M${busX},${y0}V${y1}`);
         if (side === "l") busL = { x: busX, y: y0 };
@@ -1222,6 +1223,9 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     // inverter
     const ist = inv.entity && hs[inv.entity], ival = ist ? (this._hass.formatEntityState ? this._hass.formatEntityState(ist) : ist.state) : null;
     this._tile("inv", { ...inT, color: inv.color || (vic ? "#3b8ed8" : "#8e8e93"), on: true, icon: inv.icon || "mdi:sine-wave", name: inv.name || "Omvormer", value: ival, txt: true, cls: "inv" + (invPh.length && !this._eMode ? " ph" : ""), phases: invPh.length && !this._eMode ? invPh : null, cfg: { entity: inv.entity, navigate: inv.navigate, max: inv.max || 13500, color: inv.phase_color || "#5ac8fa" } });
+    { const t = this._tiles.inv;   // optional model line and own image (e.g. a logo file in /local)
+      if (inv.model) { const m = document.createElement("div"); m.className = "model"; m.textContent = inv.model; t.querySelector(".tv").after(m); }
+      if (inv.image) { const im = document.createElement("img"); im.className = "logo"; im.src = inv.image; im.alt = ""; t.querySelector(".th").prepend(im); t.querySelector(".th ha-icon").style.display = "none"; } }
     // battery
     if (b) {
       const alarm = b.soc_alarm != null ? Number(b.soc_alarm) : 15, bc = b.color || (soc != null && soc < alarm ? "#ff6b5e" : "#34c759");
@@ -1266,9 +1270,9 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       if (!e) { e = document.createElement("div"); e.className = "port"; e.dataset.k = key; this._el.ov.appendChild(e); }
       e.textContent = txt; e._seen = true; const HH = this._ovH || 250; Object.assign(e.style, { left: x / 4 + "%", top: y / HH * 100 + "%" }); };
     if (vic) { const L = c.labels || {};
-      port("in", L.ac_in || "AC-in", inT.x, inT.y + inT.h / 2);
+      port("in", L.ac_in || "AC-in", inT.x, inT.y + 30);
       if (yo1.length) port("o1", L.ac_out1 || "AC-out 1", W / 2, inT.y + inT.h);
-      if (yo2.length) port("o2", L.ac_out2 || "AC-out 2", inT.x + MW, inT.y + inT.h / 2); }
+      if (yo2.length) port("o2", L.ac_out2 || "AC-out 2", inT.x + MW, inT.y + 30); }
     this._el.ov.querySelectorAll(".port").forEach((e) => { if (!e._seen) e.remove(); });
     let lbl = "";
     if (false) { const t = (x, y, txt, anc) => `<text x="${x}" y="${y}" font-size="7.5" fill="currentColor" opacity=".55" text-anchor="${anc}" font-weight="600">${txt}</text>`;

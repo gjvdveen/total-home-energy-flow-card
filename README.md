@@ -201,7 +201,7 @@ chart:
 
 ### Inverter (`inverter`)
 
-`name`, `entity` (a state sensor, e.g. *Inverting* / *Charging*), `icon`, `color`, `navigate`, `phases` (list of per-phase power sensors, shown as bars), `max`.
+`name`, `entity` (a state sensor, e.g. *Inverting* / *Charging*), `icon`, `color`, `navigate`, `phases` (list of per-phase power sensors, shown as bars; one phase works too), `max`, `model` (text under the state, e.g. *3× MultiPlus-II 48/5000*) and `image` (your own small image, e.g. `/local/my-logo.png`, shown instead of the icon).
 
 ### Price (`price`)
 
