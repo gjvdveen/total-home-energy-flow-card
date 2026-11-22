@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.8.9";
+const THEF_VERSION = "1.9.0";
 
 const T = {
   en: { home_total: "Home total", produced: "produced", used: "used", imported: "imported", exp_short: "export", today_total: "Total today", home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -1152,9 +1152,13 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       // AC-out 2 at the top right (own branch from the right of the inverter); AC-out 1 fills both columns from the bottom up
       const o2s = outs.filter((x) => isOut(x, "out2")), o1s = outs.filter((x) => isOut(x, "out1"));
       o1s.sort((a, b) => (a.g.source || a.g.position === "top" ? 1 : 0) - (b.g.source || b.g.position === "top" ? 1 : 0));   // sources end up highest
-      const u = (x) => (x.ph && x.ph.length ? 2 : 1);   // rows on the grid
-      const L1 = [], R1 = []; let ul = sides.l.reduce((a, x) => a + u(x), 0), ur = o2s.reduce((a, x) => a + u(x), 0);
-      for (const x of o1s) { if (c.split === false || ur <= ul) { R1.push(x); ur += u(x); } else { L1.push(x); ul += u(x); } }
+      const u = (x) => (x.g.phases && x.g.phases.length ? 2 : 1);   // rows on the grid (from the config, so live and today look the same)
+      // sources (solar) always on the left under grid/AC-in; consumers on the right, overflowing to the left only when needed
+      const isS = (x) => x.g.source || x.g.position === "top", srcs = o1s.filter(isS), cons = o1s.filter((x) => !isS(x));
+      const L1 = c.split === false ? [] : srcs.slice(), R1 = c.split === false ? srcs.slice() : [];
+      let ul = sides.l.reduce((a, x) => a + u(x), 0) + L1.reduce((a, x) => a + u(x), 0), ur = o2s.reduce((a, x) => a + u(x), 0) + R1.reduce((a, x) => a + u(x), 0);
+      const cap = c.split === false ? Infinity : Math.max(ul, Math.ceil((ul + ur + cons.reduce((a, x) => a + u(x), 0)) / 2), 4);
+      for (const x of cons) { if (ur + u(x) <= cap) { R1.push(x); ur += u(x); } else { L1.push(x); ul += u(x); } }
       vicPos = { lTop: sides.l.slice(), rTop: o2s, lBot: L1, rBot: R1 };
       sides.l = [...sides.l, ...L1.slice().reverse()];
       sides.r = [...o2s, ...R1.slice().reverse()];
@@ -1198,8 +1202,8 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       if (vicPos) {   // top group from the top, AC-out 1 group from the bottom up
         const top = side === "l" ? vicPos.lTop : vicPos.rTop, bot = side === "l" ? vicPos.lBot : vicPos.rBot, m = new Map();
         let y = 0; for (const x of top) { const h = sl(x) * SP - G; m.set(x, { y, h, sm: sl(x) < 2 }); y += h + G; }
-        if (vicPos.rTop.length) { y = H + G; for (const x of bot) { const h = sl(x) * SP - G; y -= h + G; m.set(x, { y, h, sm: true }); } }   // AC-out 2 at the top: AC-out 1 from the bottom up
-        else for (const x of bot.slice().reverse()) { const h = sl(x) * SP - G; m.set(x, { y, h, sm: true }); y += h + G; }   // no AC-out 2: everything from the top, no gaps
+        if (vicPos.rTop.length) { y = H + G; for (const x of bot.slice().reverse()) { const h = sl(x) * SP - G; y -= h + G; m.set(x, { y, h, sm: true }); } }   // AC-out 2 at the top: AC-out 1 from the bottom up
+        else for (const x of bot) { const h = sl(x) * SP - G; m.set(x, { y, h, sm: true }); y += h + G; }   // no AC-out 2: everything from the top, no gaps
         pos = list.map((x) => m.get(x));
       }
       list.forEach((x, i) => {
