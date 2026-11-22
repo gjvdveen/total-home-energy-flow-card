@@ -1,7 +1,7 @@
 # Changelog
 
 ## 1.2.0 (unreleased)
-- **Home branch**: in the schematic the first right tile (home) hangs on the inverter and all other consumers (plus *Other*) hang underneath home, so it's clear they are part of the home total. Up to 7 tiles on the right. Turn off with `branch: false`.
+- **Home branch**: in the schematic the first right tile (home) hangs on the inverter; all other consumers (plus *Other*) are shown in a grid underneath, fed from home, so it's clear they are part of the home total (up to 9). Turn off with `branch: false`.
 - Middle column (price, solar, inverter, battery) is stacked from the top instead of stretched.
 - **New 4th view "Today"**: the schematic with kWh since midnight for every tile (grid import with export, solar, battery charged/discharged, home, each device and *Other*). Add `energy:` (kWh meter) to items, `energy_import`/`energy_export` to the grid and `energy_charge`/`energy_discharge` to the battery. Without a home meter the home total is calculated from the energy balance.
 

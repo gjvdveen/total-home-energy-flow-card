@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.3.0";
+const THEF_VERSION = "1.3.2";
 
 const T = {
   en: { home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -1077,7 +1077,11 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const W = 400, CW = 106, MW = 112, MX = (W - MW) / 2, G = 12, UMIN = 58, LG = 26;
     // tiles with position: top go above the inverter in the middle column
     const topL = groups.l.filter((x) => x.g.position === "top").slice(0, 1);
-    const sides = { l: groups.l.filter((x) => x.g.position !== "top").slice(0, 5), r: groups.r.filter((x) => x.g.position !== "top").slice(0, c.branch === false ? 5 : 7) };
+    const sides = { l: groups.l.filter((x) => x.g.position !== "top").slice(0, 5), r: groups.r.filter((x) => x.g.position !== "top").slice(0, 5) };
+    // home branch: home stays top right, all other consumers go to a grid underneath, fed from home
+    const allR = groups.r.filter((x) => x.g.position !== "top"), br = c.branch !== false && allR.length > 1;
+    const devs = br ? allR.slice(1, 10) : [];
+    if (br) sides.r = allR.slice(0, 1);
     const wt = (x) => x.w ? x.w : x.g.size === "small" ? 1 : x.g.size === "large" ? 2 : x.ph.length ? 1.7 : 1;
     const units = (L) => L.reduce((a, x) => a + wt(x), 0);
     const need = (L) => L.length ? units(L) * UMIN + G * (L.length - 1) : 0;
@@ -1086,10 +1090,12 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const needSides = Math.max(need(sides.l), need(sides.r)), cmp = needSides < 300;
     const hTop = topL.length ? (cmp ? 50 : 58) : 0, hInv = cmp ? 60 : 74, hBat = b ? (cmp ? 88 : 112) : 0, LG2 = cmp ? 18 : LG;
     const needMid = hPr + PG + hTop + hInv + hBat + (hTop ? LG2 : 0) + (hBat ? LG2 : 0);
-    const H = Math.round(Math.max(cmp ? 200 : 240, needSides, needMid));
+    const topH = Math.round(Math.max(cmp ? 200 : 240, needSides, needMid));
+    const rows = Math.ceil(devs.length / 3), RH = UMIN, gridTop = topH + 30;
+    const H = devs.length ? gridTop + rows * RH + (rows - 1) * 16 : topH;
     if (this._ovH !== H) { this._ovH = H; this._el.ov.style.aspectRatio = `400 / ${H}`; this._el.ovsvg.setAttribute("viewBox", `0 0 400 ${H}`); }
     // one unit height for both columns, so tiles of the same kind are the same size left and right
-    const uh = Math.min(UMIN * 1.3, ...["l", "r"].filter((k) => sides[k].length).map((k) => (H - G * (sides[k].length - 1)) / units(sides[k])));
+    const uh = Math.min(UMIN * 1.3, ...["l", "r"].filter((k) => sides[k].length).map((k) => (topH - G * (sides[k].length - 1)) / units(sides[k])));
     const paths = [];
     // middle column: [top] - inverter (centred) - battery
     const invY = hPr + PG + (hTop ? hTop + LG2 : 0);   // middle column stacked from the top
@@ -1178,6 +1184,22 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       t.style.setProperty("--soc", (soc == null ? 0 : Math.max(0, Math.min(100, soc))) + "%");
       const ch = (bp || 0) < -10, on = Math.abs(bp || 0) > 10, x0 = W / 2, y1 = inT.y + inT.h, y2 = baT.y;
       paths.push({ d: ch ? `M${x0},${y1}V${y2}` : `M${x0},${y2}V${y1}`, color: bc, on });
+    }
+    if (devs.length) {
+      // home -> straight down from the bottom of the home tile to the first row; further rows via the gutter
+      const hp = col(sides.r)[0], hcx = W - CW / 2, hb = hp.y + hp.h, gut = (MX + MW + W - CW) / 2, cols = [[0, CW], [MX, MW], [W - CW, CW]];
+      const busY = (r) => gridTop + r * (RH + 16) - 9;
+      bus.push(`M${hcx},${hb}V${busY(0)}`);
+      if (rows > 1) bus.push(`M${gut},${busY(0)}V${busY(rows - 1)}`);
+      for (let r = 0; r < rows; r++) { const n = Math.min(3, devs.length - r * 3), xs = cols.slice(0, n).map(([x, w]) => x + w / 2).concat(r ? [gut] : [hcx]);
+        bus.push(`M${Math.min(...xs)},${busY(r)}H${Math.max(...xs)}`); }
+      devs.forEach((x, k) => {
+        const g = x.g, r = Math.floor(k / 3), [tx, tw] = cols[k % 3], ty = gridTop + r * (RH + 16), cx = tx + tw / 2;
+        const color = g.color || "#8e8e93", on = Math.abs(x.tot || 0) > minP;
+        this._tile("d" + k, { x: tx, y: ty, w: tw, h: RH, color, on, icon: g.icon || "mdi:flash", name: g.name, value: this._fmtHtml(x.tot), sub: "", cls: "sm", cfg: g });
+        const d = r === 0 ? `M${hcx},${hb}V${busY(0)}H${cx}V${ty}` : `M${hcx},${hb}V${busY(0)}H${gut}V${busY(r)}H${cx}V${ty}`;
+        paths.push({ d, color, on, rev: (x.tot || 0) < 0, pw: Math.abs(x.tot || 0) });
+      });
     }
     Object.entries(this._tiles).forEach(([k, t]) => { if (!t._seen) { t.remove(); delete this._tiles[k]; } });
     this._el.ovsvg.innerHTML = bus.map((d) => `<path d="${d}" stroke="rgba(127,127,127,.45)"/>`).join("") + paths.slice().sort((a, b) => (a.pw || 1e9) - (b.pw || 1e9)).map((p) => `<path d="${p.d}" stroke="rgba(127,127,127,.35)"/>` + (p.on ? `<path class="flow${p.rev ? " rev" : ""}" d="${p.d}" style="stroke:${p.color}"/>` : "")).join("");
