@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.7.6";
+const THEF_VERSION = "1.7.7";
 
 const T = {
   en: { home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -1130,7 +1130,11 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const needSides = Math.max(need(sides.l), need(sides.r)), cmp = needSides < 300;
     const invPh = (inv.phases || []).map((id) => this._num(id)), hTop = topL.length ? (cmp ? 50 : 58) : 0, hInv = (cmp ? 60 : 74) - (inv.show_state === false ? 22 : 0) + (invPh.length && !this._eMode ? 40 : 0) + (inv.model ? 12 : 0) + (vic ? 20 : 0), hBat = b ? (cmp ? 88 : 112) : 0, LG2 = cmp ? 18 : LG;
     const needMid = hPr + PG + hTop + hInv + hBat + (hTop ? LG2 : 0) + (hBat ? LG2 : 0) + (vic ? 40 : 0);
-    const topH = Math.round(Math.max(cmp ? 200 : 240, needSides, needMid));
+    let topH = Math.round(Math.max(cmp ? 200 : 240, needSides, needMid));
+    // Victron layout: both columns on one row grid, so left and right tiles line up (a tile with phase bars takes two rows)
+    const SP = UMIN + G, sl = (x) => (x.ph && x.ph.length ? 2 : 1);
+    if (vicPos) { const ns = Math.max(...[[...vicPos.lTop, ...vicPos.lBot], [...vicPos.rTop, ...vicPos.rBot]].map((L) => L.reduce((a, x) => a + sl(x), 0)));
+      topH = Math.max(Math.ceil((Math.max(topH, ns * SP - G) + G) / SP), ns) * SP - G; }
     const rows = Math.ceil(devs.length / 3), RH = UMIN, gridTop = topH + 30;
     const H = devs.length ? gridTop + rows * RH + (rows - 1) * 16 : topH;
     if (this._ovH !== H) { this._ovH = H; this._el.ov.style.aspectRatio = `400 / ${H}`; this._el.ovsvg.setAttribute("viewBox", `0 0 400 ${H}`); }
@@ -1155,8 +1159,8 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       let pos = col(list);
       if (vicPos) {   // top group from the top, AC-out 1 group from the bottom up
         const top = side === "l" ? vicPos.lTop : vicPos.rTop, bot = side === "l" ? vicPos.lBot : vicPos.rBot, m = new Map();
-        let y = 0; for (const x of top) { const h = (x.ph && x.ph.length ? 1.7 : 1) * UMIN; m.set(x, { y, h, sm: h < 1.5 * UMIN }); y += h + G; }
-        y = H; for (const x of bot) { const h = (x.ph && x.ph.length ? 1.7 : 1) * UMIN; y -= h; m.set(x, { y, h, sm: true }); y -= G; }
+        let y = 0; for (const x of top) { const h = sl(x) * SP - G; m.set(x, { y, h, sm: sl(x) < 2 }); y += h + G; }
+        y = H + G; for (const x of bot) { const h = sl(x) * SP - G; y -= h + G; m.set(x, { y, h, sm: true }); }
         pos = list.map((x) => m.get(x));
       }
       list.forEach((x, i) => {
