@@ -156,6 +156,7 @@ chart:
 | `show` | left items + first right item | Names of the items on the ring and list views, e.g. `[Solar, Grid, Home]` |
 | `max_power` | `10000` | Default full scale (W) of an arc or bar |
 | `kw_from` | `1000` | From this many watts values are shown in kW |
+| `min_power` | `20` | Below this many watts a tile is shown grey and its line stops flowing (schematic). Can also be set per item and on `battery` (default `10`) |
 | `rest` | – | `true` or `{name, icon, color, of, entity, energy}`: adds an *Other* tile = home total minus all listed consumers. `of` names the base item (default: first right item); or give `entity` (and optional `energy`) as the home total, then no home tile is needed |
 | `align` | `top` | `center` places the side columns around the inverter |
 | `battery_position` | `bottom` (`top` in the Victron layout) | Battery above or below the inverter in the schematic |
@@ -195,6 +196,7 @@ chart:
 | `size` | `small` or `large` tile in the schematic |
 | `in_rest: false` | Don't subtract this item when calculating *Other* (e.g. an EV charger that isn't part of the home total) |
 | `navigate` | Path to open on tap (otherwise the more-info dialog opens) |
+| `min_power` | Own threshold (W) for this item, overrides the card's `min_power` |
 | `energy` | kWh meter (total) for the *Today* view |
 | `energy_import`, `energy_export` | Grid kWh meters for the *Today* view |
 | `type: meter` | Info tile without a line, e.g. gas or water. Use `entity` (current value), `today` (a daily sensor) or `total` (a meter; today's usage is calculated from the statistics) |
@@ -211,7 +213,7 @@ chart:
 | `attribute`, `start_key`, `value_key` | Where the list of upcoming prices lives (for the colour dot and the trend arrow). If omitted, the settings of `chart.price` are used |
 | `decimals` | Default `3` |
 | `prefix` | Default `€ ` |
-| `position` | `bottom` (default): small, bottom right next to *Charts*, on every view. `top`: as a pill above the middle column of the schematic (also used when there are no charts) |
+| `position` | `bottom` (default): small, bottom right next to *Charts*, on every view; tap it to unfold the cheapest and most expensive moment of today (and tomorrow, once known). `top`: as a pill above the middle column of the schematic (also used when there are no charts) |
 | `show` | `false` hides the price |
 
 ### Charts (`chart`)

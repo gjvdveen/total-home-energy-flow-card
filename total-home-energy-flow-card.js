@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.7.7";
+const THEF_VERSION = "1.7.8";
 
 const T = {
   en: { home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -766,6 +766,11 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       .tabs { display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap; justify-content:center; }
       .cline { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; } .cline .chead { margin-bottom:0; } .charts:not(.open) .cline { margin-bottom:0; }
       .pfoot { display:flex; align-items:center; gap:5px; font-size:12px; font-weight:500; opacity:.7; cursor:pointer; white-space:nowrap; font-variant-numeric: tabular-nums; }
+      .ppan { margin:0 0 10px auto; width:max-content; max-width:100%; font-size:12px; font-variant-numeric: tabular-nums; cursor:pointer; display:grid; grid-template-columns:7px auto auto auto; align-items:center; column-gap:10px; line-height:1.7; }
+      .ppan[hidden] { display:none; } .ppan .ph { grid-column:1 / -1; opacity:.55; font-size:11px; margin-top:4px; line-height:1.4; } .ppan .ph:first-child { margin-top:0; }
+      .ppan .pr { display:contents; }
+      .ppan .pr i { width:7px; height:7px; border-radius:50%; } .ppan .l { opacity:.7; } .ppan .t { opacity:.7; text-align:right; } .ppan b { font-weight:600; text-align:right; }
+      .pfoot ha-icon { transition: transform .2s; } .pfoot.open ha-icon { transform: rotate(90deg); }
       .pfoot i { width:7px; height:7px; border-radius:50%; flex:0 0 auto; } .pfoot ha-icon { --mdc-icon-size:13px; } .pfoot .u { font-size:1em; }
       .tab { padding:5px 12px; border-radius:14px; font-size:12.5px; font-weight:600; background: rgba(127,127,127,.16); cursor:pointer; user-select:none; }
       .tab.sel { background: var(--primary-color, #03a9f4); color:#fff; }
@@ -798,14 +803,16 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       <div class="stage"><svg viewBox="0 0 400 290"></svg><div class="mid"><div class="mh"><ha-icon></ha-icon><span></span></div><div class="soc"></div><div class="s"></div></div></div>
       <div class="ls"><div class="lring"><svg viewBox="0 0 200 200"></svg><div class="mid m2"><div class="mh"><ha-icon></ha-icon><span></span></div><div class="soc"></div><div class="s"></div></div></div><div class="rows"></div></div>
       <div class="ov"><svg viewBox="0 0 400 250"></svg></div>
-      <div class="charts" hidden><div class="cline"><div class="chead"></div><div class="pfoot" hidden></div></div><div class="cbody"><div class="tabs"></div><div class="chart"></div></div></div></div>`;
+      <div class="charts" hidden><div class="cline"><div class="chead"></div><div class="pfoot" hidden></div></div><div class="ppan" hidden></div><div class="cbody"><div class="tabs"></div><div class="chart"></div></div></div></div>`;
     this._el = { title: r.querySelector(".title"), stage: r.querySelector(".stage"), svg: r.querySelector(".stage svg"), mid: r.querySelector(".mid"),
       ov: r.querySelector(".ov"), ovsvg: r.querySelector(".ov svg"), pg: r.querySelector(".pg") };
     r.querySelectorAll(".pg span").forEach((sp) => sp.addEventListener("click", () => {
       this._page = sp.dataset.p; try { localStorage.setItem("thef-ring-page", this._page); } catch (_) {} this._sig = null; this._render(); }));
     this._el.ls = r.querySelector(".ls"); this._el.lsvg = r.querySelector(".lring svg"); this._el.mid2 = r.querySelector(".m2"); this._el.rows = r.querySelector(".rows");
     Object.assign(this._el, { charts: r.querySelector(".charts"), tabs: r.querySelector(".tabs"), chart: r.querySelector(".chart"), pfoot: r.querySelector(".pfoot") });
-    this._el.pfoot.addEventListener("click", () => this._open({ entity: this._config.price.entity }));
+    this._el.ppan = r.querySelector(".ppan");
+    this._el.pfoot.addEventListener("click", () => { this._pOpen = !this._pOpen; this._sig = null; this._render(); });
+    this._el.ppan.addEventListener("click", () => this._open({ entity: this._config.price.entity }));
     this._el.charts.querySelector(".chead").addEventListener("click", () => {
       this._chOpen = !this._chOpen; try { localStorage.setItem("thef-ring-charts-open", this._chOpen ? "1" : "0"); } catch (_) {}
       this._el.charts.classList.toggle("open", this._chOpen); if (this._chOpen) this._renderChart(true); });
@@ -842,7 +849,23 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       const today = pts.filter((x) => new Date(x[0]).toDateString() === day).map((x) => x[1]);
       const lo = today.length ? Math.min(...today) : v, hi = today.length ? Math.max(...today) : v, f = hi > lo ? (v - lo) / (hi - lo) : 0.5;
       const nxt = pts.find((x) => x[0] > Date.now()), tr = nxt ? (nxt[1] > v + 0.005 ? "mdi:arrow-top-right" : nxt[1] < v - 0.005 ? "mdi:arrow-bottom-right" : "mdi:arrow-right") : "";
+    this._pPts = pts.sort((a, b) => a[0] - b[0]);
     return `<i style="background:hsl(${(120 - 120 * f).toFixed(0)},62%,50%)"></i><span>${pcfg.prefix != null ? pcfg.prefix : "€ "}${isNaN(v) ? pc.state : v.toLocaleString(loc, { minimumFractionDigits: pcfg.decimals != null ? pcfg.decimals : 3, maximumFractionDigits: pcfg.decimals != null ? pcfg.decimals : 3 })}<span class="u"> /kWh</span></span>${tr ? `<ha-icon icon="${tr}"></ha-icon>` : ""}`;
+  }
+  // unfolded price: cheapest and most expensive moment today (and tomorrow, when known)
+  _pricePanel() {
+    const pts = this._pPts || [], pcfg = this._config.price || {}, loc = this._hass.language || "en", dec = pcfg.decimals != null ? pcfg.decimals : 3, pre = pcfg.prefix != null ? pcfg.prefix : "€ ";
+    const fm = (v) => pre + v.toLocaleString(loc, { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    const hm = (t) => new Date(t).toLocaleTimeString(loc, { hour: "2-digit", minute: "2-digit" });
+    const step = pts.length > 1 ? Math.min(...pts.slice(1).map((x, i) => x[0] - pts[i][0]).filter((d) => d > 0)) : 3600e3;
+    const nl = (this._hass.language || "").startsWith("nl");
+    const day = (off) => { const d = new Date(); d.setDate(d.getDate() + off); const k = d.toDateString(); return pts.filter((x) => new Date(x[0]).toDateString() === k); };
+    const row = (lbl, list, pick) => { if (!list.length) return ""; const v = pick(...list.map((x) => x[1])), x = list.find((y) => y[1] === v);
+      const hsl = pick === Math.min ? "120,62%,45%" : "0,62%,52%";
+      return `<div class="pr"><i style="background:hsl(${hsl})"></i><span class="l">${lbl}</span><span class="t">${hm(x[0])}–${hm(x[0] + (isFinite(step) ? step : 3600e3))}</span><b>${fm(v)}</b></div>`; };
+    const blk = (title, list) => list.length ? `<div class="ph">${title}</div>` + row(nl ? "Goedkoopst" : "Cheapest", list, Math.min) + row(nl ? "Duurst" : "Most expensive", list, Math.max) : "";
+    const html = blk(nl ? "Vandaag" : "Today", day(0)) + blk(nl ? "Morgen" : "Tomorrow", day(1));
+    return html || `<div class="ph">${this._t("nodata")}</div>`;
   }
   _render() {
     if (!this._hass || !this._config || !this._el) return;
@@ -874,6 +897,8 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const pcs = c.price && c.price.entity && this._hass.states[c.price.entity];
     this._pBot = !!(pcs && c.price.show !== false && c.price.position !== "top" && this._chartTabs().length);
     this._el.pfoot.hidden = !this._pBot; if (this._pBot) this._el.pfoot.innerHTML = this._priceHtml(pcs);
+    this._el.pfoot.classList.toggle("open", !!(this._pBot && this._pOpen)); this._el.ppan.hidden = !(this._pBot && this._pOpen);
+    if (this._pBot && this._pOpen) this._el.ppan.innerHTML = this._pricePanel();
     if (this._page === "overview") { this._eMode = false; this._el.ov.classList.remove("static"); this._renderOv(groups, soc, bp); return; }
     if (this._page === "today") { this._renderToday(groups, soc); return; }
     if (this._page === "list") { this._renderList(groups, soc, bp); return; }
@@ -1089,7 +1114,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     return t;
   }
   _renderOv(groups, soc, bp) {
-    const c = this._config, b = c.battery, inv = c.inverter || {}, minP = 20, hs = this._hass.states;
+    const c = this._config, b = c.battery, inv = c.inverter || {}, minP = Number(c.min_power) >= 0 ? Number(c.min_power) : 20, hs = this._hass.states, thr = (g) => (g && Number(g.min_power) >= 0 ? Number(g.min_power) : minP);
     Object.values(this._tiles || {}).forEach((t) => (t._seen = false));
     const W = 400, CW = 106, MW = 112, MX = (W - MW) / 2, G = 12, UMIN = 58, LG = 26;
     // tiles with position: top go above the inverter in the middle column
@@ -1169,8 +1194,8 @@ class TotalHomeEnergyRingCard extends HTMLElement {
           this._tile(side + i, { x: tx, y: p.y, w: CW, h: p.h, color, on: m.on, icon: g.icon || "mdi:gauge", name: g.name, value: m.main, sub: p.sm ? "" : m.sub, cls: (p.sm ? "sm " : "") + "meter", cfg: g });
           if (p.sm && m.sub) { const t = this._tiles[side + i]; t.querySelector(".th span").textContent = (g.name || "") + " · " + m.sub.replace(/<[^>]+>/g, "").replace(/\u00a0/g, " "); }
           return; }
-        const exp = g.export_color && (x.tot || 0) < 0, cc = exp ? g.export_color : color, on = Math.abs(x.tot || 0) > minP;
-        const sub = g.export_color ? ((x.tot || 0) < -minP ? (g.export_name || "teruglevering") : (x.tot || 0) > minP ? (g.import_name || "afname") : "") : "";
+        const exp = g.export_color && (x.tot || 0) < 0, cc = exp ? g.export_color : color, on = Math.abs(x.tot || 0) > thr(g);
+        const sub = g.export_color ? ((x.tot || 0) < -thr(g) ? (g.export_name || "teruglevering") : (x.tot || 0) > thr(g) ? (g.import_name || "afname") : "") : "";
         this._tile(side + i, { x: tx, y: p.y, w: CW, h: p.h, color: cc, on, icon: g.icon || "mdi:flash", name: g.name, value: this._fmtHtml(x.tot), phases: x.ph.length ? x.ph : null, sub: x.sub != null ? x.sub : !x.ph.length && sub && !p.sm ? sub : "", cls: p.sm ? "sm" : "", cfg: g });
         const br = false;   // (old in-column home branch, replaced by the grid below)
         let ty = br && i === 0 ? p.y + Math.min(28, p.h / 3) : p.y + p.h / 2, ex = side === "l" ? tx + CW : tx, bx = side === "l" ? (ex + inT.x) / 2 + (vic ? 7 : 0) : br ? inT.x + MW + (ex - inT.x - MW) * 0.35 : (inT.x + MW + ex) / 2;
@@ -1233,7 +1258,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       el.innerHTML = this._priceHtml(pc);
     } else { const el = this._el.ov.querySelector(".prc"); if (el) el.remove(); }
     for (const x of topL) {
-      const g = x.g, color = g.color || "#ffcc00", exp = g.export_color && (x.tot || 0) < 0, cc = exp ? g.export_color : color, on = Math.abs(x.tot || 0) > minP;
+      const g = x.g, color = g.color || "#ffcc00", exp = g.export_color && (x.tot || 0) < 0, cc = exp ? g.export_color : color, on = Math.abs(x.tot || 0) > thr(g);
       this._tile("top", { ...toT, color: cc, on, icon: g.icon || "mdi:solar-power-variant", name: g.name, value: this._fmtHtml(x.tot), cls: "sm", cfg: g });
       const x0 = W / 2, y1 = toT.y + toT.h, y2 = inT.y;
       paths.push({ d: `M${x0},${y1}V${y2}`, color: cc, on, rev: (x.tot || 0) < 0, pw: Math.abs(x.tot || 0) });
@@ -1255,7 +1280,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       const t = this._tile("bat", { ...baT, color: bc, on: true, icon: b.icon || "mdi:home-battery", name: b.name || "Accu", value: soc == null ? "–" : `${Math.round(soc)}<span class="u">%\u2002${this._eMode ? "" : st}</span>`,
         sub: [l1, l2], cls: "bat", cfg: b });
       t.style.setProperty("--soc", (soc == null ? 0 : Math.max(0, Math.min(100, soc))) + "%");
-      const ch = (bp || 0) < -10, on = Math.abs(bp || 0) > 10, x0 = W / 2, y1 = batTop ? inT.y : inT.y + inT.h, y2 = batTop ? baT.y + baT.h : baT.y;
+      const bT = b && Number(b.min_power) >= 0 ? Number(b.min_power) : 10, ch = (bp || 0) < -bT, on = Math.abs(bp || 0) > bT, x0 = W / 2, y1 = batTop ? inT.y : inT.y + inT.h, y2 = batTop ? baT.y + baT.h : baT.y;
       paths.push({ d: ch ? `M${x0},${y1}V${y2}` : `M${x0},${y2}V${y1}`, color: bc, on });
     }
     if (devs.length) {
@@ -1268,7 +1293,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
         bus.push(`M${Math.min(...xs)},${busY(r)}H${Math.max(...xs)}`); }
       devs.forEach((x, k) => {
         const g = x.g, r = Math.floor(k / 3), [tx, tw] = cols[k % 3], ty = gridTop + r * (RH + 16), cx = tx + tw / 2;
-        const color = g.color || "#8e8e93", on = Math.abs(x.tot || 0) > minP;
+        const color = g.color || "#8e8e93", on = Math.abs(x.tot || 0) > thr(g);
         this._tile("d" + k, { x: tx, y: ty, w: tw, h: RH, color, on, icon: g.icon || "mdi:flash", name: g.name, value: this._fmtHtml(x.tot), sub: "", cls: "sm", cfg: g });
         const d = r === 0 ? `M${hcx},${hb}V${busY(0)}H${cx}V${ty}` : `M${hcx},${hb}V${busY(0)}H${gut}V${busY(r)}H${cx}V${ty}`;
         paths.push({ d, color, on, rev: (x.tot || 0) < 0, pw: Math.abs(x.tot || 0) });
