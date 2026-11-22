@@ -1,6 +1,9 @@
 # Changelog
 
-## 1.2.0 (unreleased)
+## 1.2.0 (2026-11-22)
+- **Costs in *Today***: every tile with an `energy` sensor shows what it cost today, hour by hour at that hour's price (grid: import minus export; *Other*: from the home balance). Turn off with `price.today_cost: false`.
+- **Cheapest block**: the unfolded price list also shows the cheapest block of 3 hours (`price.block_hours`), for today from now on and for tomorrow.
+- Battery and import/export labels follow the Home Assistant language.
 - **Price next to the charts**: the current price now sits small at the bottom right, on the same line as *Charts*, on every view. This frees up room in the schematic. `price.position: top` keeps the old pill. Tap the price to unfold the cheapest and most expensive moment of today and tomorrow.
 - **`min_power`**: set from how many watts a tile lights up and its line starts flowing (card-wide, per item, or on the battery). Default 20 W.
 - Grid export colour changed to mint (`#00c7be`) so it no longer looks the same as the battery.

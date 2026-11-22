@@ -9,21 +9,24 @@
 🇬🇧 [English version](README.md)
 
 <p align="center">
-  <img src="images/nl-ring.png" width="32%" alt="Ring">
-  <img src="images/nl-list.png" width="32%" alt="Lijst">
-  <img src="images/nl-overview.png" width="32%" alt="Schema">
+  <img src="images/nl-ring.png" width="24%" alt="Ring">
+  <img src="images/nl-list.png" width="24%" alt="Lijst">
+  <img src="images/nl-overview.png" width="24%" alt="Schema">
+  <img src="images/nl-today.png" width="24%" alt="Vandaag">
 </p>
 
 ## Waarom deze kaart?
 
 - **Meerdere energieverbruikers, niet alleen "huis"**: elk apparaat dat je meet (laadpaal, warmtepomp, boiler, wasmachine, tv, Shelly-stekkers…) krijgt een eigen tegel, kleur en bewegende lijn. Tot 5 per kant, plus solar in het midden, en de kaart groeit mee. Een automatische tegel **Overig** toont alles wat je niet apart meet (`rest: true`).
-- **Drie weergaven in één kaart**: wissel met de knopjes rechtsboven; de kaart onthoudt je keuze.
+- **Vier weergaven in één kaart**: wissel met de knopjes rechtsboven; de kaart onthoudt je keuze.
   - **Ring**: de accu in het midden met vermogensbogen eromheen, per fase een eigen boog.
   - **Lijst**: de accuring met ernaast een compacte lijst, met een mini-grafiek van het laatste uur en fasebalkjes.
   - **Schema**: tegels die met de omvormer verbonden zijn via bewegende lijnen die laten zien waar de stroom heen gaat.
+  - **Vandaag**: hetzelfde schema met de kWh sinds middernacht per tegel en wat het kostte, met de uurprijs (vraagt `energy`-sensoren).
 - **Vermogen per fase** (L1 / L2 / L3) voor net en huis, ook als één fase teruglevert terwijl de andere afnemen.
 - **Gas en water** als informatietegels (verbruik van vandaag).
-- **Actuele stroomprijs** met een gekleurd bolletje (goedkoop → duur ten opzichte van vandaag) en een pijltje voor het volgende uur.
+- **Actuele stroomprijs** met een gekleurd bolletje (goedkoop → duur ten opzichte van vandaag) en een pijltje. Tik erop voor het goedkoopste uur, het goedkoopste blok van 3 uur en het duurste uur van vandaag en morgen.
+- **Schema in Victron-stijl**: geef per apparaat aan of het op AC-in, AC-out 1 of AC-out 2 zit en de kaart tekent het zo, met het type omvormer en het vermogen per fase.
 - **Uitklapbare grafieken**: prijs, solar, accu, verbruik en net over de afgelopen 24 uur.
 - **Werkt met elke installatie.** Gemaakt met een Victron ESS in gedachten, maar elke waarde is gewoon een Home Assistant-sensor.
 - Licht: één JavaScript-bestand, geen afhankelijkheden, volgt je Home Assistant-thema.

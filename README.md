@@ -9,22 +9,24 @@
 🇳🇱 [Nederlandse versie](README.nl.md)
 
 <p align="center">
-  <img src="images/en-ring.png" width="32%" alt="Ring view">
-  <img src="images/en-list.png" width="32%" alt="List view">
-  <img src="images/en-overview.png" width="32%" alt="Schematic view">
+  <img src="images/en-ring.png" width="24%" alt="Ring view">
+  <img src="images/en-list.png" width="24%" alt="List view">
+  <img src="images/en-overview.png" width="24%" alt="Schematic view">
+  <img src="images/en-today.png" width="24%" alt="Today view">
 </p>
 
 ## Why this card?
 
 - **Many energy consumers, not just "home"**: show every device you measure (EV charger, heat pump, boiler, washing machine, TV, Shelly plugs…), each with its own tile, colour and animated line. Up to 5 per side, plus solar in the middle, and the card grows with them. An automatic **Other** tile shows everything you don't measure separately.
-- **Three views in one card**: switch with the buttons in the top right; the card remembers your choice.
+- **Four views in one card**: switch with the buttons in the top right; the card remembers your choice.
   - **Ring**: the battery in the middle, power arcs around it, one arc per phase.
   - **List**: the battery ring with a compact list beside it, each with a sparkline of the last hour and phase bars.
   - **Schematic**: tiles connected to the inverter with animated lines that show where the power flows.
-  - **Today**: the same schematic with kWh since midnight per tile (needs `energy` sensors).
+  - **Today**: the same schematic with kWh since midnight per tile and what it cost, using the hourly price (needs `energy` sensors).
 - **Per-phase power** (L1 / L2 / L3) for grid and home, including phases that export while others import.
 - **Gas and water** as info tiles (today's usage).
-- **Live energy price** with a colour dot (cheap → expensive compared with today) and a trend arrow for the next hour.
+- **Live energy price** with a colour dot (cheap → expensive compared with today) and a trend arrow. Tap it for the cheapest hour, the cheapest 3-hour block and the most expensive hour of today and tomorrow.
+- **Victron-style schematic**: tell each item whether it sits on AC-in, AC-out 1 or AC-out 2 and the card draws it that way, with the inverter model and per-phase output.
 - **Collapsible charts**: price, solar, battery, usage and grid for the last 24 hours.
 - **Works with any setup.** Built with a Victron ESS in mind, but every value is just a Home Assistant sensor.
 - Light-weight: a single JavaScript file, no dependencies, follows your Home Assistant theme.
@@ -216,6 +218,8 @@ chart:
 | `prefix` | Default `€ ` |
 | `position` | `bottom` (default): small, bottom right next to *Charts*, on every view; tap it to unfold the cheapest and most expensive moment of today (and tomorrow, once known). `top`: as a pill above the middle column of the schematic (also used when there are no charts) |
 | `show` | `false` hides the price |
+| `block_hours` | Length of the *cheapest block* in the unfolded price list (default `3`) |
+| `today_cost` | `false` hides the € amounts in the *Today* view |
 
 ### Charts (`chart`)
 

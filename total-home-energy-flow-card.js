@@ -4,12 +4,12 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.9.0";
+const THEF_VERSION = "1.2.0";
 
 const T = {
-  en: { home_total: "Home total", produced: "produced", used: "used", imported: "imported", exp_short: "export", today_total: "Total today", home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
+  en: { charged: "charged", discharged: "discharged", home_total: "Home total", produced: "produced", used: "used", imported: "imported", exp_short: "export", today_total: "Total today", home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
         charging: "charging", discharging: "discharging", supplying: "supplying", idle: "idle", off: "off", rest: "Other", unavailable: "unavailable", legend: "Legend", charts: "Charts", gas: "Gas", water: "Water", today: "today", price: "Price", consumption: "Usage", soc: "Battery", nodata: "No data", ring: "Ring: where the home's power comes from", lines: "Line thickness = power · dots show direction", consumers: "Devices", devices_n: "devices", now: "now", at: "at", today_tab: "Today", now_tab: "Now", price_legend: "Price (on the grid tile): dot green = cheap · orange = average · red = expensive compared with today · arrow = next price goes up or down" },
-  nl: { home_total: "Huis totaal", produced: "opbrengst", used: "verbruik", imported: "afname", exp_short: "terug", today_total: "Totaal vandaag", home: "Huis", solar: "Solar", grid: "Net", battery: "Accu", import: "afname", export: "teruglevering",
+  nl: { charged: "geladen", discharged: "ontladen", home_total: "Huis totaal", produced: "opbrengst", used: "verbruik", imported: "afname", exp_short: "terug", today_total: "Totaal vandaag", home: "Huis", solar: "Solar", grid: "Net", battery: "Accu", import: "afname", export: "teruglevering",
         charging: "laden", discharging: "ontladen", supplying: "levert", idle: "rust", off: "uit", rest: "Overig", unavailable: "niet beschikbaar", legend: "Legenda", charts: "Grafieken", gas: "Gas", water: "Water", today: "vandaag", price: "Prijs", consumption: "Verbruik", soc: "Accu", nodata: "Geen gegevens", ring: "Ring: waar de stroom van het huis vandaan komt", lines: "Dikte van de lijn = vermogen · bolletjes = richting", consumers: "Apparaten", devices_n: "apparaten", now: "nu", at: "om", today_tab: "Vandaag", now_tab: "Nu", price_legend: "Prijs (bij Net): bolletje groen = goedkoop · oranje = gemiddeld · rood = duur t.o.v. vandaag · pijltje = volgende prijs hoger of lager" },
 };
 
@@ -735,6 +735,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       .tile .th { display:flex; align-items:center; gap:4px; font-size: clamp(10px, 2.9cqw, 13px); opacity:.8; white-space:nowrap; overflow:hidden; }
       .tile .th ha-icon { --mdc-icon-size: clamp(12px, 3.4cqw, 16px); color: var(--c); flex:0 0 auto; }
       .tile ha-icon.ar { --mdc-icon-size:.8em; opacity:.6; margin-right:3px; vertical-align:-.05em; } .tile .ts ha-icon.ar { --mdc-icon-size:1em; margin-right:2px; }
+      .tile .eur { font-weight:600; opacity:.9; }
       .tile .tv { font-size: clamp(14px, 4.6cqw, 24px); font-weight:600; font-variant-numeric: tabular-nums; white-space:nowrap; line-height:1.2; overflow:hidden; text-overflow:ellipsis; }
       .tile .tv.txt { font-size: clamp(12px, 3.6cqw, 18px); white-space:normal; line-height:1.15; }
       .tile.inv .tv.txt { font-size: clamp(11px, 3.1cqw, 15px); font-weight:600; margin:auto 0; padding-bottom:4px; align-self:stretch; text-align:center; text-wrap:balance; }
@@ -853,6 +854,44 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     this._pPts = pts.sort((a, b) => a[0] - b[0]);
     return `<i style="background:hsl(${(120 - 120 * f).toFixed(0)},62%,50%)"></i><span>${pcfg.prefix != null ? pcfg.prefix : "€ "}${isNaN(v) ? pc.state : v.toLocaleString(loc, { minimumFractionDigits: pcfg.decimals != null ? pcfg.decimals : 3, maximumFractionDigits: pcfg.decimals != null ? pcfg.decimals : 3 })}<span class="u"> /kWh</span></span>${tr ? `<ha-icon icon="${tr}"></ha-icon>` : ""}`;
   }
+  _pricePts() {   // [[start ms, price]] from the price sensor's attribute, sorted
+    const c = this._config, pcfg = c.price || {}, pc = pcfg.entity && this._hass.states[pcfg.entity]; if (!pc) return [];
+    const arr = (pcfg.attribute && pc.attributes[pcfg.attribute]) || (c.chart && c.chart.price && pc.attributes[c.chart.price.attribute || "prices"]) || [];
+    const sk = pcfg.start_key || (c.chart && c.chart.price && c.chart.price.start_key) || "start", vk = pcfg.value_key || (c.chart && c.chart.price && c.chart.price.value_key) || "price";
+    return (Array.isArray(arr) ? arr : []).map((x) => Array.isArray(x) ? [Date.parse(x[0]), +x[1]] : [Date.parse(x[sk]), +x[vk]]).filter((x) => !isNaN(x[0]) && !isNaN(x[1])).sort((a, b) => a[0] - b[0]);
+  }
+  _hourPrices(pts) {   // average per whole hour (also for 15-minute prices): [[hour start ms, price]]
+    const m = new Map(); for (const [t, v] of pts) { const h = new Date(t); h.setMinutes(0, 0, 0); const k = h.getTime(); const e = m.get(k) || [0, 0]; e[0] += v; e[1]++; m.set(k, e); }
+    return [...m.entries()].sort((a, b) => a[0] - b[0]).map(([k, e]) => [k, e[0] / e[1]]);
+  }
+  _hourly(id) {   // today's change per hour (Wh) of a total meter, completed hours: Map(hour start ms -> Wh)
+    if (!id) return null;
+    this._hstats = this._hstats || {};
+    const c0 = this._hstats[id];
+    if (!c0 || Date.now() - c0.t > 300000) {
+      this._hstats[id] = { t: Date.now(), v: c0 ? c0.v : null };
+      const d0 = new Date(); d0.setHours(0, 0, 0, 0);
+      this._hass.callWS({ type: "recorder/statistics_during_period", start_time: d0.toISOString(), statistic_ids: [id], period: "hour", types: ["change"], units: { energy: "Wh" } })
+        .then((r) => { const m = new Map(); for (const x of (r && r[id]) || []) { const t = typeof x.start === "number" ? x.start : Date.parse(x.start); if (x.change != null) m.set(t, x.change); }
+          this._hstats[id].v = m; this._sig = null; this._render(); }).catch(() => {});
+    }
+    return this._hstats[id].v;
+  }
+  // cost today (€) of a sum of meters: terms [[id, sign]]; per hour × that hour's price, the running hour at the current price
+  _cost(terms, clamp) {
+    const hp = this._hourPrices(this._pricePts()); if (!hp.length || !terms.length) return null;
+    const pAt = (t) => { let p = null; for (const h of hp) { if (h[0] <= t) p = h[1]; else break; } return p != null ? p : hp[0][1]; };
+    const hours = new Map(); const now = new Date(); now.setMinutes(0, 0, 0); const cur = now.getTime();
+    for (const [id, sg] of terms) {
+      const tot = this._stat(id), hm = this._hourly(id); if (tot == null || !hm) return null;
+      let sum = 0; for (const [t, wh] of hm) { if (t >= cur) continue; hours.set(t, (hours.get(t) || 0) + sg * wh); sum += wh; }
+      hours.set(cur, (hours.get(cur) || 0) + sg * Math.max(0, tot - sum));
+    }
+    let eur = 0; for (const [t, wh] of hours) eur += (clamp ? Math.max(0, wh) : wh) / 1000 * pAt(t);
+    return eur;
+  }
+  _eur(v) { const pcfg = this._config.price || {}, loc = this._hass.language || "en";
+    return v == null ? "" : (v < 0 ? "−" : "") + (pcfg.prefix != null ? pcfg.prefix : "€ ") + Math.abs(v).toLocaleString(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   // unfolded price: cheapest and most expensive moment today (and tomorrow, when known)
   _pricePanel() {
     const pts = this._pPts || [], pcfg = this._config.price || {}, loc = this._hass.language || "en", dec = pcfg.decimals != null ? pcfg.decimals : 3, pre = pcfg.prefix != null ? pcfg.prefix : "€ ";
@@ -864,8 +903,14 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const row = (lbl, list, pick) => { if (!list.length) return ""; const v = pick(...list.map((x) => x[1])), x = list.find((y) => y[1] === v);
       const hsl = pick === Math.min ? "120,62%,45%" : "0,62%,52%";
       return `<div class="pr"><i style="background:hsl(${hsl})"></i><span class="l">${lbl}</span><span class="t">${hm(x[0])}–${hm(x[0] + (isFinite(step) ? step : 3600e3))}</span><b>${fm(v)}</b></div>`; };
-    const blk = (title, list) => list.length ? `<div class="ph">${title}</div>` + row(nl ? "Goedkoopst" : "Cheapest", list, Math.min) + row(nl ? "Duurst" : "Most expensive", list, Math.max) : "";
-    const html = blk(nl ? "Vandaag" : "Today", day(0)) + blk(nl ? "Morgen" : "Tomorrow", day(1));
+    // cheapest block of N whole hours (price.block_hours, default 3); today only from now on, so it can still be used
+    const BH = Number(pcfg.block_hours) > 0 ? Number(pcfg.block_hours) : 3;
+    const block = (list, fromNow) => { const hrs = this._hourPrices(list).filter((h) => !fromNow || h[0] + 3600e3 > Date.now()); let best = null;
+      for (let i = 0; i + BH <= hrs.length; i++) { const w = hrs.slice(i, i + BH); if (w[BH - 1][0] - w[0][0] !== (BH - 1) * 3600e3) continue;
+        const avg = w.reduce((a, h) => a + h[1], 0) / BH; if (!best || avg < best.avg) best = { t: w[0][0], avg }; }
+      return best ? `<div class="pr"><i style="background:hsl(150,55%,42%)"></i><span class="l">${nl ? `Goedkoopste ${BH} uur` : `Cheapest ${BH} h`}</span><span class="t">${hm(best.t)}–${hm(best.t + BH * 3600e3)}</span><b>${fm(best.avg)}</b></div>` : ""; };
+    const blk = (title, list, off) => list.length ? `<div class="ph">${title}</div>` + row(nl ? "Goedkoopst" : "Cheapest", list, Math.min) + block(list, off === 0) + row(nl ? "Duurst" : "Most expensive", list, Math.max) : "";
+    const html = blk(nl ? "Vandaag" : "Today", day(0), 0) + blk(nl ? "Morgen" : "Tomorrow", day(1), 1);
     return html || `<div class="ph">${this._t("nodata")}</div>`;
   }
   _render() {
@@ -954,7 +999,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       el.style.setProperty("--c", L.col);
       el.style.top = (L.y / 290 * 100) + "%";
       if (L.side === "l") el.style.left = (L.x / 400 * 100) + "%"; else el.style.right = ((400 - L.x) / 400 * 100) + "%";
-      const sub = g.export_color || g.direction ? ((L.x0.tot || 0) < 0 ? (g.export_name || "teruglevering") : (g.import_name || "afname")) : "";
+      const sub = g.export_color || g.direction ? ((L.x0.tot || 0) < 0 ? (g.export_name || this._t("export")) : (g.import_name || this._t("import"))) : "";
       const tv = L.x0.tot || 0, dir = (g.export_color || g.direction) && Math.abs(tv) > 20;
       // arrow points towards the battery/home when importing, away when exporting
       const toMid = tv > 0, arr = dir ? (L.side === "l" ? (toMid ? "mdi:arrow-right-bold" : "mdi:arrow-left-bold") : (toMid ? "mdi:arrow-left-bold" : "mdi:arrow-right-bold")) : "";
@@ -978,7 +1023,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     // charging positive, discharging negative (like Victron)
     const pw = bp == null ? "" : (bp > 10 ? "−" : "") + this._fmtHtml(bp);
     m.querySelector(".s").innerHTML = [vt, pw].filter(Boolean).join(" ");
-    m.title = bp == null ? "" : bp < -10 ? (b.charging_name || "laden") : bp > 10 ? (b.discharging_name || "ontladen") : (b.idle_name || "rust");
+    m.title = bp == null ? "" : bp < -10 ? (b.charging_name || this._t("charging")) : bp > 10 ? (b.discharging_name || this._t("discharging")) : (b.idle_name || this._t("idle"));
   }
   _hist(id) {   // last hour of a power sensor, for the sparklines
     if (!id) return null;
@@ -1020,16 +1065,19 @@ class TotalHomeEnergyRingCard extends HTMLElement {
   }
   _renderToday(groups, soc) {   // same schematic, but kWh since midnight (from the long-term statistics)
     const c = this._config, st = (id) => (id ? this._stat(id) : null), b = c.battery || {};
+    const showCost = !!(c.price && c.price.entity) && (c.price.today_cost !== false);   // € per tile, from the hourly price
     const tg = (x) => {
       const g = x.g;
       if (g.type === "meter") return { ...x };
       if (g.energy_import || g.energy_export) {
         const i = st(g.energy_import) || 0, e = st(g.energy_export) || 0;
-        return { ...x, tot: i, ph: [], w: 1.5, src: true, sub: e > 0 ? `<ha-icon class="ar" icon="mdi:arrow-left"></ha-icon>` + this._fmtHtml(e) : "", imp: i, exp: e };
+        const nc = showCost ? this._cost([[g.energy_import, 1], ...(g.energy_export ? [[g.energy_export, -1]] : [])]) : null;   // net cost: import minus export
+        return { ...x, tot: i, ph: [], w: 1.5, src: true, sub: [e > 0 ? `<ha-icon class="ar" icon="mdi:arrow-left"></ha-icon>` + this._fmtHtml(e) : "", nc != null ? `<span class="eur">${this._eur(nc)}</span>` : ""].filter(Boolean), imp: i, exp: e };
       }
       // say what the kWh is: produced by a source (solar), used by a consumer
       const isSrc = g.source || g.position === "top" || (groups.l.includes(x) && !g.load && g.ac !== "in");
-      return { ...x, tot: g._rest ? null : (g.energy ? st(g.energy) : null), ph: [], w: 1, src: !!isSrc };
+      const ec = showCost && g.energy && !g._rest ? this._cost([[g.energy, 1]]) : null;
+      return { ...x, tot: g._rest ? null : (g.energy ? st(g.energy) : null), ph: [], w: 1, src: !!isSrc, sub: ec != null ? `<span class="eur">${this._eur(ec)}</span>` : undefined };
     };
     this._eMode = true;
     const tgs = { l: groups.l.map(tg), r: groups.r.map(tg) };
@@ -1043,6 +1091,13 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const home = rest && rest.g.entity ? null : tgs.r.find((x) => !x.g._rest);
     if (home && home.tot == null && !home.g.energy) home.tot = bal;
     if (rest) this._restCalc(tgs, rest, rest.g.entity ? (rest.g.energy ? st(rest.g.energy) : bal) : undefined);
+    if (rest && showCost && rest.tot != null) {
+      const gi = grid && grid.g, homeT = rest.g.energy ? [[rest.g.energy, 1]] : gi ? [[gi.energy_import, 1], ...(gi.energy_export ? [[gi.energy_export, -1]] : []), ...srcs.filter((x) => x.g.energy).map((x) => [x.g.energy, 1]),
+        ...(b.energy_discharge ? [[b.energy_discharge, 1]] : []), ...(b.energy_charge ? [[b.energy_charge, -1]] : [])] : [];
+      const loads = [...tgs.r, ...tgs.l].filter((x) => x !== rest && x !== grid && !x.src && x.g.energy && x.g.type !== "meter" && x.g.in_rest !== false && (x.g.ac !== "in" || x.g.in_rest === true));
+      const rc = homeT.length ? this._cost([...homeT, ...loads.map((x) => [x.g.energy, -1])], true) : null;
+      if (rc != null) rest.sub = `<span class="eur">${this._eur(rc)}</span>`;
+    }
     this._el.ov.classList.add("static");
     this._renderOv(tgs, soc, this._bE ? this._bE.d - this._bE.c : null);
     this._eMode = false;
@@ -1174,7 +1229,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     const needMid = hPr + PG + hTop + hInv + hBat + (hTop ? LG2 : 0) + (hBat ? LG2 : 0) + (vic ? 20 : 0);
     let topH = Math.round(Math.max(cmp ? 200 : 240, vicPos ? 0 : needSides, needMid));   // Victron layout: rows counted on the grid below
     // Victron layout: both columns on one row grid, so left and right tiles line up (a tile with phase bars takes two rows)
-    const SP = UMIN + G, sl = (x) => (x.ph && x.ph.length ? 2 : 1);
+    const SP = UMIN + G, sl = (x) => ((x.ph && x.ph.length) || (x.g.phases && x.g.phases.length) ? 2 : 1);
     if (vicPos) { const ns = Math.max(...[[...vicPos.lTop, ...vicPos.lBot], [...vicPos.rTop, ...vicPos.rBot]].map((L) => L.reduce((a, x) => a + sl(x), 0)));
       topH = Math.max(Math.ceil((Math.max(topH, ns * SP - G) + G) / SP), ns) * SP - G; }
     const rows = Math.ceil(devs.length / 3), RH = UMIN, gridTop = topH + 30;
@@ -1213,7 +1268,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
           if (p.sm && m.sub) { const t = this._tiles[side + i]; t.querySelector(".th span").textContent = (g.name || "") + " · " + m.sub.replace(/<[^>]+>/g, "").replace(/\u00a0/g, " "); }
           return; }
         const exp = g.export_color && (x.tot || 0) < 0, cc = exp ? g.export_color : color, on = Math.abs(x.tot || 0) > thr(g);
-        const sub = g.export_color ? ((x.tot || 0) < -thr(g) ? (g.export_name || "teruglevering") : (x.tot || 0) > thr(g) ? (g.import_name || "afname") : "") : "";
+        const sub = g.export_color ? ((x.tot || 0) < -thr(g) ? (g.export_name || this._t("export")) : (x.tot || 0) > thr(g) ? (g.import_name || this._t("import")) : "") : "";
         this._tile(side + i, { x: tx, y: p.y, w: CW, h: p.h, color: cc, on, icon: g.icon || "mdi:flash", name: g.name, value: (x.src != null ? `<ha-icon class="ar" icon="mdi:arrow-${(side === "l") === x.src ? "right" : "left"}"></ha-icon>` : "") + this._fmtHtml(x.tot), phases: x.ph.length ? x.ph : null, sub: x.sub != null ? x.sub : !x.ph.length && sub && !p.sm ? sub : "", cls: p.sm ? "sm" : "", cfg: g });
         const br = false;   // (old in-column home branch, replaced by the grid below)
         let ty = br && i === 0 ? p.y + Math.min(28, p.h / 3) : p.y + p.h / 2, ex = side === "l" ? tx + CW : tx, bx = side === "l" ? (ex + inT.x) / 2 + (vic ? 7 : 0) : br ? inT.x + MW + (ex - inT.x - MW) * 0.35 : (inT.x + MW + ex) / 2;
@@ -1290,11 +1345,11 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     // battery
     if (b) {
       const alarm = b.soc_alarm != null ? Number(b.soc_alarm) : 15, bc = b.color || (soc != null && soc < alarm ? "#ff6b5e" : "#34c759");
-      const st = bp == null ? "" : bp < -10 ? (b.charging_name || "laden") : bp > 10 ? (b.discharging_name || "ontladen") : (b.idle_name || "rust");
+      const st = bp == null ? "" : bp < -10 ? (b.charging_name || this._t("charging")) : bp > 10 ? (b.discharging_name || this._t("discharging")) : (b.idle_name || this._t("idle"));
       const f = (id, u, dec) => { const e = id && hs[id]; if (!e || isNaN(parseFloat(e.state))) return null; return parseFloat(e.state).toLocaleString(this._hass.language || "en", { maximumFractionDigits: dec, minimumFractionDigits: dec }) + "<span class='u'>\u00a0" + u + "</span>"; };
       const bw = Math.abs(bp || 0) > 10 ? (bp > 0 ? "−" : "") + this._fmtHtml(bp) : "";
       let l1 = [bw, f(b.voltage, "V", 1)].filter(Boolean).join(" · "), l2 = [f(b.current, "A", 0), f(b.temperature, "°C", 0)].filter(Boolean).join(" · ");
-      if (this._eMode && this._bE) { l1 = (b.charged_name || "geladen") + " " + this._fmtHtml(this._bE.c); l2 = (b.discharged_name || "ontladen") + " " + this._fmtHtml(this._bE.d); }
+      if (this._eMode && this._bE) { l1 = (b.charged_name || this._t("charged")) + " " + this._fmtHtml(this._bE.c); l2 = (b.discharged_name || this._t("discharged")) + " " + this._fmtHtml(this._bE.d); }
       const t = this._tile("bat", { ...baT, color: bc, on: true, icon: b.icon || "mdi:home-battery", name: b.name || "Accu", value: soc == null ? "–" : `${Math.round(soc)}<span class="u">%\u2002${this._eMode ? "" : st}</span>`,
         sub: [l1, l2], cls: "bat", cfg: b });
       t.style.setProperty("--soc", (soc == null ? 0 : Math.max(0, Math.min(100, soc))) + "%");
