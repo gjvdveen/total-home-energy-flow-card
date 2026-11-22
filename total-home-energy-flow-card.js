@@ -4,12 +4,12 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.8.3";
+const THEF_VERSION = "1.8.4";
 
 const T = {
-  en: { produced: "produced", used: "used", imported: "imported", exp_short: "export", today_total: "Total today", home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
+  en: { home_total: "Home total", produced: "produced", used: "used", imported: "imported", exp_short: "export", today_total: "Total today", home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
         charging: "charging", discharging: "discharging", supplying: "supplying", idle: "idle", off: "off", rest: "Other", unavailable: "unavailable", legend: "Legend", charts: "Charts", gas: "Gas", water: "Water", today: "today", price: "Price", consumption: "Usage", soc: "Battery", nodata: "No data", ring: "Ring: where the home's power comes from", lines: "Line thickness = power · dots show direction", consumers: "Devices", devices_n: "devices", now: "now", at: "at", today_tab: "Today", now_tab: "Now", price_legend: "Price (on the grid tile): dot green = cheap · orange = average · red = expensive compared with today · arrow = next price goes up or down" },
-  nl: { produced: "opbrengst", used: "verbruik", imported: "afname", exp_short: "terug", today_total: "Totaal vandaag", home: "Huis", solar: "Solar", grid: "Net", battery: "Accu", import: "afname", export: "teruglevering",
+  nl: { home_total: "Huis totaal", produced: "opbrengst", used: "verbruik", imported: "afname", exp_short: "terug", today_total: "Totaal vandaag", home: "Huis", solar: "Solar", grid: "Net", battery: "Accu", import: "afname", export: "teruglevering",
         charging: "laden", discharging: "ontladen", supplying: "levert", idle: "rust", off: "uit", rest: "Overig", unavailable: "niet beschikbaar", legend: "Legenda", charts: "Grafieken", gas: "Gas", water: "Water", today: "vandaag", price: "Prijs", consumption: "Verbruik", soc: "Accu", nodata: "Geen gegevens", ring: "Ring: waar de stroom van het huis vandaan komt", lines: "Dikte van de lijn = vermogen · bolletjes = richting", consumers: "Apparaten", devices_n: "apparaten", now: "nu", at: "om", today_tab: "Vandaag", now_tab: "Nu", price_legend: "Prijs (bij Net): bolletje groen = goedkoop · oranje = gemiddeld · rood = duur t.o.v. vandaag · pijltje = volgende prijs hoger of lager" },
 };
 
@@ -902,6 +902,11 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     if (this._pBot && this._pOpen) this._el.ppan.innerHTML = this._pricePanel();
     if (this._page === "overview") { this._eMode = false; this._el.ov.classList.remove("static"); this._renderOv(groups, soc, bp); return; }
     if (this._page === "today") { this._renderToday(groups, soc); return; }
+    // no home tile but rest has its own total (rest.entity): the ring and list pages show that total as "Home total"
+    if (rest && rest.g.entity && !groups.r.some((x) => x.g._home)) {
+      const rc = c.rest || {};
+      groups.r.unshift({ g: { name: rc.total_name || this._t("home_total"), entity: rest.g.entity, icon: rc.total_icon || "mdi:home", color: rc.total_color || rc.color || DEFAULT_COLORS.home, _home: true }, tot: this._num(rest.g.entity), ph: [] });
+    }
     if (this._page === "list") { this._renderList(groups, soc, bp); return; }
     const CX = 200, CY = 145, R0 = 178, GAP = 8, SPAN = 47, SEP = 8;
     let svg = "";
@@ -999,6 +1004,8 @@ class TotalHomeEnergyRingCard extends HTMLElement {
   _pick(groups) {   // groups shown on the ring and list pages: config "show" (names), else all left groups plus the first right one
     const c = this._config, all = [...groups.l, ...groups.r].filter((x) => x.g.type !== "meter");
     if (Array.isArray(c.show) && c.show.length) return c.show.map((n) => all.find((x) => x.g.name === n)).filter(Boolean);
+    const home = groups.r.find((x) => x.g._home), srcR = groups.r.filter((x) => x.g.type !== "meter" && (x.g.source || x.g.position === "top"));
+    if (home) return [...groups.l.filter((x) => x.g.type !== "meter" && !x.g.load && x.g.ac !== "in").slice(0, 3), ...srcR.slice(0, 2), home];
     return [...groups.l.filter((x) => x.g.type !== "meter" && !x.g.load).slice(0, 3), ...groups.r.filter((x) => x.g.type !== "meter").slice(0, 1)];
   }
   _restCalc(gs, rest, baseTot) {   // rest = home total minus all listed consumers; baseTot given = hidden home total (rest.entity)
@@ -1044,7 +1051,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       (soc != null ? `<circle cx="100" cy="100" r="${RR}" fill="none" stroke="${bc}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(circ * Math.min(100, Math.max(0, soc)) / 100).toFixed(1)} ${circ.toFixed(1)}" transform="rotate(-90 100 100)"/>` : "");
     this._centre(this._el.mid2, soc, bp);
     // which rows: config list (names) or all left groups plus the first right one
-    const rows = this._pick(groups).slice(0, 5).sort((a, b) => (b.g.position === "top") - (a.g.position === "top"));   // "top" items (solar) first
+    const rows = this._pick(groups).slice(0, 5).sort((a, b) => (b.g.position === "top" || !!b.g.source) - (a.g.position === "top" || !!a.g.source));   // "top" / source items (solar) first
     const box = this._el.rows; box.innerHTML = "";
     for (const x of rows) {
       const g = x.g, color = g.color || "#5ac8fa", tv = x.tot || 0, exp = g.export_color && tv < 0, col = exp ? g.export_color : color;

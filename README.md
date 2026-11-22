@@ -157,7 +157,7 @@ chart:
 | `max_power` | `10000` | Default full scale (W) of an arc or bar |
 | `kw_from` | `1000` | From this many watts values are shown in kW |
 | `min_power` | `20` | Below this many watts a tile is shown grey and its line stops flowing (schematic). Can also be set per item and on `battery` (default `10`) |
-| `rest` | – | `true` or `{name, icon, color, of, entity, energy}`: adds an *Other* tile = home total minus all listed consumers. `of` names the base item (default: first right item); or give `entity` (and optional `energy`) as the home total, then no home tile is needed |
+| `rest` | – | `true` or `{name, icon, color, of, entity, energy}`: adds an *Other* tile = home total minus all listed consumers. `of` names the base item (default: first right item); or give `entity` (and optional `energy`) as the home total, then no home tile is needed; the ring and list views show that total as *Home total* (`total_name`, `total_icon`, `total_color`) |
 | `align` | `top` | `center` places the side columns around the inverter |
 | `battery_position` | `bottom` (`top` in the Victron layout) | Battery above or below the inverter in the schematic |
 | `split` | `true` | Victron layout: spread AC-out devices over the left and right column |
