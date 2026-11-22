@@ -1,6 +1,9 @@
 # Changelog
 
-## 1.1.0 (unreleased)
+## 1.2.0 (unreleased)
+- **New 4th view "Today"**: the schematic with kWh since midnight for every tile (grid import with export, solar, battery charged/discharged, home, each device and *Other*). Add `energy:` (kWh meter) to items, `energy_import`/`energy_export` to the grid and `energy_charge`/`energy_discharge` to the battery. Without a home meter the home total is calculated from the energy balance.
+
+## 1.1.0
 - **New: "Other" tile** (`rest: true`) – the home total minus all listed consumers, so you see what you don't measure separately. Use `in_rest: false` on an item to leave it out of the calculation.
 - **Compact layout**: with few devices the schematic shrinks (smaller battery/inverter tiles, shorter lines), and grows again when you add more.
 - Up to **5 tiles per side** in the schematic; grid and home tiles are a bit more compact.

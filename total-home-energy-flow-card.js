@@ -4,7 +4,7 @@
  * Line thickness follows power; optional moving dots.
  * https://github.com/gjvdveen/total-home-energy-flow-card  — MIT License
  */
-const THEF_VERSION = "1.1.1";
+const THEF_VERSION = "1.2.2";
 
 const T = {
   en: { home: "Home", solar: "Solar", grid: "Grid", battery: "Battery", import: "import", export: "export",
@@ -699,6 +699,10 @@ class TotalHomeEnergyRingCard extends HTMLElement {
   set hass(h) { this._hass = h; this._render(); }
   _fmtHtml(w) {
     if (w == null) return "–";
+    if (this._eMode) {   // energy (Wh) -> kWh
+      const loc = this._hass?.locale?.language || this._hass?.language || "en", k = Math.abs(w) / 1000;
+      return `${k.toLocaleString(loc, { minimumFractionDigits: k >= 10 ? 1 : 2, maximumFractionDigits: k >= 10 ? 1 : 2 })}<span class="u"> kWh</span>`;
+    }
     const loc = this._hass?.locale?.language || this._hass?.language || "en", a = Math.abs(w);
     const [n, u] = a >= this._config.kw_from ? [(a / 1000).toLocaleString(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), "kW"] : [Math.round(a).toLocaleString(loc), "W"];
     return `${n}<span class="u"> ${u}</span>`;
@@ -715,6 +719,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       .pg span.sel { background: var(--ha-card-background, var(--card-background-color, #2c2c2e)); opacity:1; box-shadow:0 1px 3px rgba(0,0,0,.25); }
       .ov { position:relative; width:100%; aspect-ratio: 400 / 250; max-width:560px; margin:0 auto; }
       .ov svg { z-index:0; } .ov path { fill:none; stroke-width:2.2; stroke-linecap:round; }
+      .ov.static path.flow { animation:none; stroke-dasharray:none; stroke-width:2.6; opacity:.9; }
       .ov path.flow { stroke-dasharray: 1 7; stroke-width:3.2; animation: thefdash 1.1s linear infinite; }
       @keyframes thefdash { to { stroke-dashoffset: -16; } } .ov path.flow.rev { animation-direction: reverse; }
       @media (prefers-reduced-motion: reduce) { .ov path.flow { animation:none; } }
@@ -782,7 +787,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       .mid .soc { font-size: clamp(32px, 13.5cqw, 68px); font-weight:600; line-height:1; font-variant-numeric: tabular-nums; }
       .mid .soc .u { font-size:.5em; }
       .mid .s { font-size: clamp(11px, 3.4cqw, 16px); opacity:.7; margin-top:2px; white-space:nowrap; line-height:1.2; }
-    </style><div class="card"><div class="head"><div class="title"></div><div class="pg"><span data-p="ring"><ha-icon icon="mdi:circle-double"></ha-icon></span><span data-p="list"><ha-icon icon="mdi:format-list-bulleted-square"></ha-icon></span><span data-p="overview"><ha-icon icon="mdi:view-dashboard-outline"></ha-icon></span></div></div>
+    </style><div class="card"><div class="head"><div class="title"></div><div class="pg"><span data-p="ring"><ha-icon icon="mdi:circle-double"></ha-icon></span><span data-p="list"><ha-icon icon="mdi:format-list-bulleted-square"></ha-icon></span><span data-p="overview"><ha-icon icon="mdi:view-dashboard-outline"></ha-icon></span><span data-p="today"><ha-icon icon="mdi:calendar-today"></ha-icon></span></div></div>
       <div class="stage"><svg viewBox="0 0 400 290"></svg><div class="mid"><div class="mh"><ha-icon></ha-icon><span></span></div><div class="soc"></div><div class="s"></div></div></div>
       <div class="ls"><div class="lring"><svg viewBox="0 0 200 200"></svg><div class="mid m2"><div class="mh"><ha-icon></ha-icon><span></span></div><div class="soc"></div><div class="s"></div></div></div><div class="rows"></div></div>
       <div class="ov"><svg viewBox="0 0 400 250"></svg></div>
@@ -835,10 +840,11 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     if (b) { soc = this._num(b.soc);
       if (b.entity) bp = this._num(b.entity) * (b.invert ? -1 : 1);
       else if (b.charge || b.discharge) bp = (this._num(b.discharge) || 0) - (this._num(b.charge) || 0); }
-    const sig = JSON.stringify([groups.l.map((x) => [x.tot, x.ph]), groups.r.map((x) => [x.tot, x.ph]), soc, bp, c.title, this._page, this._ovExtra(), c.price && c.price.entity && this._hass.states[c.price.entity] ? this._hass.states[c.price.entity].state : null, this._page === "list" ? Object.values(this._hh || {}).map((h) => h.v ? h.v.length : 0) : 0]);
+    const sig = JSON.stringify([groups.l.map((x) => [x.tot, x.ph]), groups.r.map((x) => [x.tot, x.ph]), soc, bp, c.title, this._page, this._ovExtra(), c.price && c.price.entity && this._hass.states[c.price.entity] ? this._hass.states[c.price.entity].state : null, this._page === "list" ? Object.values(this._hh || {}).map((h) => h.v ? h.v.length : 0) : 0, this._page === "today" ? Object.values(this._stats || {}).map((x) => x.v) : 0]);
     if (sig === this._sig) return; this._sig = sig;
     this._el.title.textContent = c.title || "";
-    const pages = Array.isArray(c.pages) && c.pages.length ? c.pages : ["ring", "list", "overview"];
+    const hasE = [...c.left, ...c.right].some((g) => g.energy || g.energy_import) || (c.battery && c.battery.energy_charge);
+    const pages = Array.isArray(c.pages) && c.pages.length ? c.pages : ["ring", "list", "overview", ...(hasE ? ["today"] : [])];
     if (!this._page) { let v = null; try { v = localStorage.getItem("thef-ring-page"); } catch (_) {} this._page = pages.includes(v) ? v : (c.page && pages.includes(c.page) ? c.page : pages[0]); }
     if (!pages.includes(this._page)) this._page = pages[0];
     this._el.pg.hidden = pages.length < 2;
@@ -848,8 +854,9 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     this._el.title.textContent = pt[this._page] != null ? pt[this._page] : (c.title || "");
     if (c.title_color) this._el.title.style.setProperty("--thef-title", c.title_color);
     this._el.pg.querySelectorAll("span").forEach((sp) => { sp.title = pt[sp.dataset.p] || sp.dataset.p; });
-    this._el.stage.hidden = this._page !== "ring"; this._el.ov.hidden = this._page !== "overview"; this._el.ls.hidden = this._page !== "list";
-    if (this._page === "overview") { this._renderOv(groups, soc, bp); return; }
+    this._el.stage.hidden = this._page !== "ring"; this._el.ov.hidden = !["overview", "today"].includes(this._page); this._el.ls.hidden = this._page !== "list";
+    if (this._page === "overview") { this._eMode = false; this._el.ov.classList.remove("static"); this._renderOv(groups, soc, bp); return; }
+    if (this._page === "today") { this._renderToday(groups, soc); return; }
     if (this._page === "list") { this._renderList(groups, soc, bp); return; }
     const CX = 200, CY = 145, R0 = 178, GAP = 8, SPAN = 47, SEP = 8;
     let svg = "";
@@ -949,6 +956,42 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     if (Array.isArray(c.show) && c.show.length) return c.show.map((n) => all.find((x) => x.g.name === n)).filter(Boolean);
     return [...groups.l.filter((x) => x.g.type !== "meter" && !x.g.load).slice(0, 3), ...groups.r.filter((x) => x.g.type !== "meter").slice(0, 1)];
   }
+  _renderToday(groups, soc) {   // same schematic, but kWh since midnight (from the long-term statistics)
+    const c = this._config, st = (id) => (id ? this._stat(id) : null), b = c.battery || {};
+    const tg = (x) => {
+      const g = x.g;
+      if (g.type === "meter") return { ...x };
+      if (g.energy_import || g.energy_export) {
+        const i = st(g.energy_import) || 0, e = st(g.energy_export) || 0;
+        return { ...x, tot: i, ph: [], w: 1.5, sub: e > 0 ? (g.export_short || "terug") + " " + this._fmtHtml(e) : "", imp: i, exp: e };
+      }
+      return { ...x, tot: g._rest ? null : (g.energy ? st(g.energy) : null), ph: [], w: 1 };
+    };
+    this._eMode = true;
+    const tgs = { l: groups.l.map(tg), r: groups.r.map(tg) };
+    const rest = tgs.r.find((x) => x.g._rest);
+    if (rest) {
+      const base = tgs.r.find((x) => !x.g._rest && (rest.g.of ? x.g.name === rest.g.of : true));
+      const loads = [...tgs.r.filter((x) => x !== base && x !== rest), ...tgs.l.filter((x) => x.g.load)].filter((x) => x.g.type !== "meter" && x.g.in_rest !== false);
+      rest.tot = base && base.tot != null ? Math.max(0, base.tot - loads.reduce((a, x) => a + Math.max(0, x.tot || 0), 0)) : null;
+    }
+    const ch = st(b.energy_charge), di = st(b.energy_discharge);
+    this._bE = ch != null || di != null ? { c: ch || 0, d: di || 0 } : null;
+    // home without its own kWh meter: energy balance = grid import − export + other sources + battery discharge − charge
+    const home = tgs.r.find((x) => !x.g._rest);
+    if (home && home.tot == null && !home.g.energy) {
+      const grid = tgs.l.find((x) => x.imp != null), srcs = tgs.l.filter((x) => x !== grid && !x.g.load && x.g.type !== "meter");
+      if (grid) home.tot = grid.imp - grid.exp + srcs.reduce((a, x) => a + (x.tot || 0), 0) + (this._bE ? this._bE.d - this._bE.c : 0);
+    }
+    if (rest) {
+      const base = tgs.r.find((x) => !x.g._rest && (rest.g.of ? x.g.name === rest.g.of : true));
+      const loads = [...tgs.r.filter((x) => x !== base && x !== rest), ...tgs.l.filter((x) => x.g.load)].filter((x) => x.g.type !== "meter" && x.g.in_rest !== false);
+      rest.tot = base && base.tot != null ? Math.max(0, base.tot - loads.reduce((a, x) => a + Math.max(0, x.tot || 0), 0)) : null;
+    }
+    this._el.ov.classList.add("static");
+    this._renderOv(tgs, soc, this._bE ? this._bE.d - this._bE.c : null);
+    this._eMode = false;
+  }
   _renderList(groups, soc, bp) {
     const c = this._config, b = c.battery || {}, alarm = b.soc_alarm != null ? Number(b.soc_alarm) : 15;
     const bc = b.color || (soc != null && soc < alarm ? "#ff6b5e" : "#34c759"), RR = 86, circ = 2 * Math.PI * RR;
@@ -1035,10 +1078,10 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     // tiles with position: top go above the inverter in the middle column
     const topL = groups.l.filter((x) => x.g.position === "top").slice(0, 1);
     const sides = { l: groups.l.filter((x) => x.g.position !== "top").slice(0, 5), r: groups.r.filter((x) => x.g.position !== "top").slice(0, 5) };
-    const wt = (x) => x.g.size === "small" ? 1 : x.g.size === "large" ? 2 : x.ph.length ? 1.7 : 1;
+    const wt = (x) => x.w ? x.w : x.g.size === "small" ? 1 : x.g.size === "large" ? 2 : x.ph.length ? 1.7 : 1;
     const units = (L) => L.reduce((a, x) => a + wt(x), 0);
     const need = (L) => L.length ? units(L) * UMIN + G * (L.length - 1) : 0;
-    const pc = c.price && c.price.entity && this._hass.states[c.price.entity], hPr = pc && c.price.show !== false ? 30 : 0, PG = hPr ? 10 : 0;
+    const pc = c.price && c.price.entity && this._hass.states[c.price.entity], hPr = pc && c.price.show !== false && !this._eMode ? 30 : 0, PG = hPr ? 10 : 0;
     // middle column; compact when the sides are short (few devices), so the card shrinks with them
     const needSides = Math.max(need(sides.l), need(sides.r)), cmp = needSides < 300;
     const hTop = topL.length ? (cmp ? 50 : 58) : 0, hInv = cmp ? 60 : 74, hBat = b ? (cmp ? 88 : 112) : 0, LG2 = cmp ? 18 : LG;
@@ -1068,7 +1111,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
           return; }
         const exp = g.export_color && (x.tot || 0) < 0, cc = exp ? g.export_color : color, on = Math.abs(x.tot || 0) > minP;
         const sub = g.export_color ? ((x.tot || 0) < -minP ? (g.export_name || "teruglevering") : (x.tot || 0) > minP ? (g.import_name || "afname") : "") : "";
-        this._tile(side + i, { x: tx, y: p.y, w: CW, h: p.h, color: cc, on, icon: g.icon || "mdi:flash", name: g.name, value: this._fmtHtml(x.tot), phases: x.ph.length ? x.ph : null, sub: !x.ph.length && sub && !p.sm ? sub : "", cls: p.sm ? "sm" : "", cfg: g });
+        this._tile(side + i, { x: tx, y: p.y, w: CW, h: p.h, color: cc, on, icon: g.icon || "mdi:flash", name: g.name, value: this._fmtHtml(x.tot), phases: x.ph.length ? x.ph : null, sub: x.sub != null ? x.sub : !x.ph.length && sub && !p.sm ? sub : "", cls: p.sm ? "sm" : "", cfg: g });
         const ty = p.y + p.h / 2, ex = side === "l" ? tx + CW : tx, bx = side === "l" ? (ex + inT.x) / 2 : (inT.x + MW + ex) / 2;
         // branch from the bus to the tile; sources flow towards the bus when positive, loads away from it
         const src = side === "l" && !g.load;   // left tiles are sources unless marked load: true
@@ -1117,8 +1160,9 @@ class TotalHomeEnergyRingCard extends HTMLElement {
       const st = bp == null ? "" : bp < -10 ? (b.charging_name || "laden") : bp > 10 ? (b.discharging_name || "ontladen") : (b.idle_name || "rust");
       const f = (id, u, dec) => { const e = id && hs[id]; if (!e || isNaN(parseFloat(e.state))) return null; return parseFloat(e.state).toLocaleString(this._hass.language || "en", { maximumFractionDigits: dec, minimumFractionDigits: dec }) + "<span class='u'>\u00a0" + u + "</span>"; };
       const bw = Math.abs(bp || 0) > 10 ? (bp > 0 ? "−" : "") + this._fmtHtml(bp) : "";
-      const l1 = [bw, f(b.voltage, "V", 1)].filter(Boolean).join(" · "), l2 = [f(b.current, "A", 0), f(b.temperature, "°C", 0)].filter(Boolean).join(" · ");
-      const t = this._tile("bat", { ...baT, color: bc, on: true, icon: b.icon || "mdi:home-battery", name: b.name || "Accu", value: soc == null ? "–" : `${Math.round(soc)}<span class="u">%\u2002${st}</span>`,
+      let l1 = [bw, f(b.voltage, "V", 1)].filter(Boolean).join(" · "), l2 = [f(b.current, "A", 0), f(b.temperature, "°C", 0)].filter(Boolean).join(" · ");
+      if (this._eMode && this._bE) { l1 = (b.charged_name || "geladen") + " " + this._fmtHtml(this._bE.c); l2 = (b.discharged_name || "ontladen") + " " + this._fmtHtml(this._bE.d); }
+      const t = this._tile("bat", { ...baT, color: bc, on: true, icon: b.icon || "mdi:home-battery", name: b.name || "Accu", value: soc == null ? "–" : `${Math.round(soc)}<span class="u">%\u2002${this._eMode ? "" : st}</span>`,
         sub: [l1, l2], cls: "bat", cfg: b });
       t.style.setProperty("--soc", (soc == null ? 0 : Math.max(0, Math.min(100, soc))) + "%");
       const ch = (bp || 0) < -10, on = Math.abs(bp || 0) > 10, x0 = W / 2, y1 = inT.y + inT.h, y2 = baT.y;
@@ -1128,7 +1172,7 @@ class TotalHomeEnergyRingCard extends HTMLElement {
     this._el.ovsvg.innerHTML = bus.map((d) => `<path d="${d}" stroke="rgba(127,127,127,.45)"/>`).join("") + paths.slice().sort((a, b) => (a.pw || 1e9) - (b.pw || 1e9)).map((p) => `<path d="${p.d}" stroke="rgba(127,127,127,.35)"/>` + (p.on ? `<path class="flow${p.rev ? " rev" : ""}" d="${p.d}" style="stroke:${p.color}"/>` : "")).join("");
   }
 }
-for (const m of ["_t", "_history", "_renderChart"]) TotalHomeEnergyRingCard.prototype[m] = TotalHomeEnergyFlowCard.prototype[m];
+for (const m of ["_t", "_history", "_renderChart", "_stat"]) TotalHomeEnergyRingCard.prototype[m] = TotalHomeEnergyFlowCard.prototype[m];
 TotalHomeEnergyRingCard.prototype._num = TotalHomeEnergyFlowCard.prototype._num;
 if (!customElements.get("total-home-energy-ring-card")) {
   customElements.define("total-home-energy-ring-card", TotalHomeEnergyRingCard);

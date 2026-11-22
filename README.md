@@ -21,6 +21,7 @@
   - **Ring**: the battery in the middle, power arcs around it, one arc per phase.
   - **List**: the battery ring with a compact list beside it, each with a sparkline of the last hour and phase bars.
   - **Schematic**: tiles connected to the inverter with animated lines that show where the power flows.
+  - **Today**: the same schematic with kWh since midnight per tile (needs `energy` sensors).
 - **Per-phase power** (L1 / L2 / L3) for grid and home, including phases that export while others import.
 - **Gas and water** as info tiles (today's usage).
 - **Live energy price** with a colour dot (cheap → expensive compared with today) and a trend arrow for the next hour.
@@ -148,9 +149,9 @@ chart:
 | Option | Default | Description |
 |---|---|---|
 | `title` | – | Card title |
-| `page_titles` | – | Own title per view: `ring`, `list`, `overview` |
+| `page_titles` | – | Own title per view: `ring`, `list`, `overview`, `today` |
 | `title_color` | secondary text colour | Colour of the title |
-| `pages` | `[ring, list, overview]` | Which views are available, and their order |
+| `pages` | `[ring, list, overview, today]` | Which views are available, and their order |
 | `page` | first page | View shown the first time |
 | `show` | left items + first right item | Names of the items on the ring and list views, e.g. `[Solar, Grid, Home]` |
 | `max_power` | `10000` | Default full scale (W) of an arc or bar |
@@ -167,6 +168,7 @@ chart:
 | `invert` | Flip the sign of `entity` |
 | `voltage`, `current`, `temperature` | Optional extra values |
 | `soc_alarm` | Below this % the battery turns red (default `15`) |
+| `energy_charge`, `energy_discharge` | Battery kWh meters for the *Today* view |
 | `name`, `icon`, `color`, `navigate` | Look and tap action |
 | `charging_name`, `discharging_name`, `idle_name` | Your own words for the states |
 
@@ -188,6 +190,8 @@ chart:
 | `size` | `small` or `large` tile in the schematic |
 | `in_rest: false` | Don't subtract this item when calculating *Other* (e.g. an EV charger that isn't part of the home total) |
 | `navigate` | Path to open on tap (otherwise the more-info dialog opens) |
+| `energy` | kWh meter (total) for the *Today* view |
+| `energy_import`, `energy_export` | Grid kWh meters for the *Today* view |
 | `type: meter` | Info tile without a line, e.g. gas or water. Use `entity` (current value), `today` (a daily sensor) or `total` (a meter; today's usage is calculated from the statistics) |
 
 ### Inverter (`inverter`)
